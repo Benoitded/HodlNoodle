@@ -1,0 +1,39 @@
+.noodleCard {
+  width: 100%;
+  height: fit-content;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  .divImg {
+    width: 120px;
+    min-width: 120px;
+    height: 120px;
+    background-color: red;
+    border-radius: 12px;
+  }
+  .divInfo {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 12px;
+    .topDivInfo {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 12px;
+      .firstLine {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        h3 {
+          margin: 0;
+        }
+      }
+      .description {
+        opacity: 0.5;
+      }
+    }
+  }
+}

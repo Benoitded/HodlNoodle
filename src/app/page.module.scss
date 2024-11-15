@@ -4,6 +4,8 @@
   align-items: center;
   justify-content: center;
   height: 80vh;
+  width: 100%;
+  gap: 24px;
   h1 {
     font-size: 52px;
   }
@@ -13,5 +15,11 @@
     &:hover {
       opacity: 0.8;
     }
+  }
+  button {
+    background-color: #000;
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 5px;
   }
 }
