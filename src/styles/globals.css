@@ -1,0 +1,168 @@
+@import url("https://fonts.cdnfonts.com/css/satoshi");
+:root {
+  /* Dark mode */
+  /* - Background */
+  --main-background: #fff1e0;
+  /* - Border */
+  --main-border: #000000;
+  /* - Text */
+  --main-text: #000000;
+  --second-text: rgba(255, 255, 255, 0.6);
+  --third-text: rgba(255, 255, 255, 0.075);
+  /* - Main color */
+  --main-color: #ff7b00;
+  --light-color: rgba(255, 166, 0, 0.5);
+  --very-light-color: rgba(255, 123, 0, 0.1);
+}
+
+.App {
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  gap: var(--border-width);
+  background-color: var(--main-background);
+}
+
+body {
+  margin: 0;
+  overflow: initial !important;
+
+  background: var(--main-background);
+  color: var(--main-text);
+
+  font-size: 16px;
+  font-family: "Satoshi", sans-serif;
+  font-optical-sizing: auto;
+  font-style: normal;
+  font-weight: 500;
+}
+
+.containerTotal {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  gap: 90px;
+
+  padding: 0 24px 16px 24px;
+  box-sizing: border-box;
+
+  min-height: 100vh;
+  height: 100%;
+}
+
+.imgBackground {
+  position: fixed;
+  z-index: -1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  img {
+    width: auto;
+    height: 100vh;
+  }
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  border: inherit;
+  width: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  font-family: inherit;
+  background-color: inherit;
+  padding: 0;
+  color: var(--main-text);
+  cursor: pointer;
+}
+
+input {
+  padding: inherit;
+  color: var(--main-text);
+}
+
+input:focus {
+  outline: none;
+}
+
+.container {
+  width: 100%;
+  box-sizing: border-box;
+  /* padding-left: 20px;
+    padding-right: 20px; */
+}
+
+/**********WalletConnect********/
+
+.partial-connect-button {
+  width: 100%;
+}
+
+.component-big-button {
+  width: 100%;
+}
+
+.partial-connect-spinner {
+  width: auto;
+}
+
+.tooltip {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px;
+  background-color: #404681;
+  font-size: 12px;
+  border-radius: 6px;
+  /* width: 100%; */
+  max-width: 200px;
+}
+
+.tooltip > .headerTooltip {
+  font-weight: 700;
+}
+
+/* Dynamics */
+
+.dynamic-shadow-dom {
+  --dynamic-brand-primary-color: #721360;
+}
+
+.item {
+  transition: background-color 0.3s ease;
+}
+
+.item:hover {
+  background-color: var(--light-color);
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media only screen and (max-width: 450px) {
+  .containerTotal {
+    padding: 0 16px 16px 16px;
+  }
+}
