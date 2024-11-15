@@ -5,10 +5,7 @@ import { Link } from "next-view-transitions";
 export default function Home() {
   return (
     <div className={styles.page}>
-      <h1>2nd page</h1>
-      <Link href="/" className={styles.link}>
-        Go to the first page
-      </Link>
+      <h1>Profile Page</h1>
     </div>
   );
 }
