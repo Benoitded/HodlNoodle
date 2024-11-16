@@ -1,70 +1,17 @@
 "use client";
+
+// @/app/add/page.tsx
+
 import { useState, useCallback } from "react";
-import styles from "./page.module.scss";
-import { GPSLocation, DETECT_TYPE_WORD } from "@/types/noodle";
-import LocationIcon from "@/assets/icons/location.svg";
+import { useTransitionRouter } from "next-view-transitions";
 import { toast } from "react-hot-toast";
 import { id } from "ethers/lib/utils";
+
+import styles from "./page.module.scss";
+import LocationIcon from "@/assets/icons/location.svg";
+import { GPSLocation, DETECT_TYPE_WORD } from "@/types/noodle";
 import { MAIN_ADDRESS_SAVE, usePushSDK } from "@/context/usePushSDK";
-import { useTransitionRouter } from "next-view-transitions";
-
-// export type DETECT_TYPE_WORD =
-//   | "AW_SEND_LOCATION" // At the beginning of the chat, only by the author of the noodle
-//   | "AW_EXTRA_PICTURE_NOODLE" // Extra picture from the author only at the creation of the noodle, so they are not added as a message
-//   | "AW_EXTRA_PICTURE" // Allow to send pictures and text in "the same message" (requires to add chatID right after the DETECT_TYPE_WORD)
-//   | "AW_SEND_VOTE"; // Only one vote by noodle, only once
-
-const resizeImage = (file: File): Promise<Blob> => {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.src = URL.createObjectURL(file);
-
-    img.onload = () => {
-      const MAX_SIZE = 320;
-      let width = img.width;
-      let height = img.height;
-
-      // Calculate new dimensions while keeping the ratio
-      if (width > height) {
-        if (width > MAX_SIZE) {
-          height = Math.round((height * MAX_SIZE) / width);
-          width = MAX_SIZE;
-        }
-      } else {
-        if (height > MAX_SIZE) {
-          width = Math.round((width * MAX_SIZE) / height);
-          height = MAX_SIZE;
-        }
-      }
-
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-
-      const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(img, 0, 0, width, height);
-
-      // Convert canvas to Blob
-      canvas.toBlob((blob) => {
-        URL.revokeObjectURL(img.src); // Clean up
-        resolve(blob!);
-      }, file.type);
-    };
-  });
-};
-
-export const convertToBase64 = async (file: File): Promise<string> => {
-  // Resize file
-  const resizedBlob = await resizeImage(file);
-
-  // Convert to base64
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(resizedBlob);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = (error) => reject(error);
-  });
-};
+import { convertToBase64 } from "@/utils/imageUtils";
 
 export default function AddNoodlePage() {
   const router = useTransitionRouter();
@@ -253,11 +200,6 @@ export default function AddNoodlePage() {
     });
     setImages((prev) => prev.filter((_, i) => i !== idx));
   };
-
-  async function handleGetBase64image() {
-    // Going to print all images I have in the image list, go the direct data I should have when I send it
-    console.log("images", images);
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

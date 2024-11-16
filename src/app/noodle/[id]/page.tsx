@@ -5,12 +5,12 @@
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-
 import { toast } from "react-hot-toast";
 import Blockies from "react-blockies";
+import { useAccount } from "wagmi";
+
 import LocationIcon from "@/assets/icons/location.svg";
 import RollsIcon from "@/assets/icons/rolls.svg";
-import CommentsIcon from "@/assets/icons/comments.svg";
 import SendIcon from "@/assets/icons/send.svg";
 import CameraIcon from "@/assets/icons/camera.svg";
 
@@ -18,9 +18,7 @@ import styles from "./page.module.scss";
 import { usePushSDK } from "@/context/usePushSDK";
 import { Noodle } from "@/types/noodle";
 import { AddressLink } from "@/utils/AddressLink/AddressLink";
-import { useAccount } from "wagmi";
-import { convertToBase64 } from "@/app/add/page";
-import { image } from "@nextui-org/react";
+import { convertToBase64 } from "@/utils/imageUtils";
 
 function formatTimeAgo(timestamp: number): string {
   const now = Date.now();
