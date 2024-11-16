@@ -14,7 +14,8 @@ import { Noodle, Message, GPSLocation, DETECT_TYPE_WORD } from "@/types/noodle";
 import { toast } from "react-hot-toast";
 
 // export const MAIN_ADDRESS_SAVE = "0x7426dd8546c43f4Da37545594874575fCE166b9E";
-export const MAIN_ADDRESS_SAVE = "0x00000000000000000000000000b3570b4070C01E";
+// export const MAIN_ADDRESS_SAVE = "0x00000000000000000000000000b3570b4070C01E";
+export const MAIN_ADDRESS_SAVE = "0x00000000000000000000000000b6570b4070C01E";
 
 interface PushSDKContextProps {
   user: PushAPI | undefined;
