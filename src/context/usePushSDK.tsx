@@ -1,16 +1,16 @@
 "use client";
 
-import { useContext, useEffect } from "react";
+import { use, useContext, useEffect } from "react";
 import { createContext, useCallback, useState } from "react";
 
-import { IFeeds, PushAPI } from "@pushprotocol/restapi";
+import { chat, IFeeds, PushAPI } from "@pushprotocol/restapi";
 import { Chain, Transport } from "viem";
 import { Account } from "viem";
 import { CONSTANTS } from "@pushprotocol/restapi";
 import { Client } from "viem";
 import { useAccount, useConnectorClient, useWalletClient } from "wagmi";
 import { providers } from "ethers";
-import { Noodle } from "@/types/noodle";
+import { Noodle, Message } from "@/types/noodle";
 
 export const MAIN_ADDRESS_SAVE = "0x7426dd8546c43f4Da37545594874575fCE166b9E";
 
@@ -164,7 +164,7 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
       const dataChats: IFeeds[] = (await messagesChats.json())?.chats || [];
 
       const mergedchats = [...dataRequests, ...dataChats];
-      const formattedChats: Noodle[] = mergedchats
+      const formattedNoodles: Noodle[] = mergedchats
         .map((noodle, index) => {
           if (!noodle.groupInformation) return null;
 
@@ -176,6 +176,7 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
             address: "",
           };
 
+          // Extract location from description
           const locationMatch = description.match(/Location: ({[^}]+})/);
           if (locationMatch) {
             try {
@@ -201,8 +202,8 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
             images.push(noodle.groupInformation.groupImage);
           }
           try {
-            const jsonContent = JSON.parse(messageContent);
-            images = [...images, jsonContent.content];
+            const imagesContent = JSON.parse(messageContent).content;
+            images = [...images, imagesContent];
             //   console.log("add this image to the array:", images);
           } catch (error) {
             console.error("Error parsing message content:", error);
@@ -217,26 +218,80 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
             location: location, // Location extraite
             likes: 0,
             dislikes: 0,
-            comments: [
-              {
-                author: noodle.msg.fromDID.replace("eip155:", ""),
-                dataMessage: messageContent,
-                timestamp: noodle.msg.timestamp || Date.now(),
-              },
-            ],
+            messages: [],
             images: images,
           };
         })
         .filter((noodle) => noodle !== null);
 
-      console.log("formattedChats:", formattedChats);
-      setNoodles(formattedChats);
+      const messagesPromises = formattedNoodles.map(async (noodle) => {
+        const messages = await getMessagesForAChatId(noodle.id);
+        return { ...noodle, messages };
+      });
+
+      const noodlesWithMessages = await Promise.all(messagesPromises);
+
+      console.log("noodlesWithMessages:", noodlesWithMessages);
+      setNoodles(noodlesWithMessages);
     } catch (error) {
       console.error("Error refreshing noodles:", error);
     } finally {
       setIsLoadingNoodles(false);
     }
   };
+
+  async function getMessagesForAChatId(chatId: string): Promise<Message[]> {
+    try {
+      console.log("start fetching messages");
+      const urlToGetHash = `https://backend.epns.io/apis/v1/chat/users/eip155:${MAIN_ADDRESS_SAVE}/conversations/${chatId}/hash`;
+      console.log("urlToGetHash:", urlToGetHash);
+      const hash = await fetch(urlToGetHash);
+      const hashData = (await hash.json()).threadHash;
+      console.log("hashData:", hashData);
+      const urlToGetMessages = `https://backend.epns.io/apis/v1/chat/conversationhash/${hashData}?fetchLimit=10`;
+      console.log("urlToGetMessages:", urlToGetMessages);
+      const messages = await fetch(urlToGetMessages);
+      const messagesData = await messages.json();
+      const messagesFormatted: Message[] = messagesData.map((message: any) => {
+        const messageContent =
+          typeof message.messageObj === "string"
+            ? message.messageObj
+            : Array.isArray(message.messageObj)
+            ? message.messageObj[0]?.content || ""
+            : message.messageObj?.content || "";
+
+        // Try to parse the message content to find if there is an image
+        let dataMessage = "";
+        let dataImage = undefined;
+
+        try {
+          const parsedContent = JSON.parse(messageContent);
+          if (
+            parsedContent.content &&
+            parsedContent.content.startsWith("data:image")
+          ) {
+            dataImage = parsedContent.content;
+          }
+        } catch {
+          // If we can't parse as JSON, it's a normal text message
+          dataMessage = messageContent;
+        }
+
+        return {
+          author: message.fromDID.replace("eip155:", ""),
+          dataMessage,
+          dataImage,
+          timestamp: message.timestamp,
+        };
+      });
+      console.log("messagesData:", messagesData);
+      console.log("messagesFormatted:", messagesFormatted);
+      return messagesFormatted || [];
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      return [];
+    }
+  }
 
   return (
     <PushSDKContext.Provider

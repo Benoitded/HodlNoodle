@@ -123,7 +123,7 @@ const NoodleCard: React.FC<NoodleCardProps> = ({ noodle }) => {
 
         <div className={styles.bottomDivInfo}>
           <div className={styles.nbMessages}>
-            <CommentsIcon /> {noodle.comments.length}
+            <CommentsIcon /> {noodle.messages.length}
           </div>
           <div className={styles.likesDislikes}>
             <RollsIcon

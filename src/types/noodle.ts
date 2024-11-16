@@ -7,7 +7,7 @@ export interface Noodle {
   location: GPSLocation; // GPS location details
   likes: number; // Number of likes
   dislikes: number; // Number of dislikes
-  comments: Message[]; // Array of messages
+  messages: Message[]; // Array of messages
   images: string[]; // Array of images
 }
 
@@ -20,5 +20,6 @@ export interface GPSLocation {
 export interface Message {
   author: string;
   dataMessage: string;
+  dataImage?: string;
   timestamp: number;
 }

@@ -13,7 +13,7 @@ export default function AddNoodlePage() {
   const [images, setImages] = useState<string[]>([]);
   const [location, setLocation] = useState<GPSLocation | null>(null);
 
-  const { user } = usePushSDK();
+  const { user, refreshNoodles } = usePushSDK();
 
   const resizeImage = (file: File): Promise<Blob> => {
     return new Promise((resolve) => {
@@ -21,7 +21,7 @@ export default function AddNoodlePage() {
       img.src = URL.createObjectURL(file);
 
       img.onload = () => {
-        const MAX_SIZE = 400;
+        const MAX_SIZE = 320;
         let width = img.width;
         let height = img.height;
 
@@ -273,6 +273,9 @@ export default function AddNoodlePage() {
     const createdGroup = await user.chat.group.create(groupName, options);
 
     console.log("createdGroup:", createdGroup);
+
+    //refresh
+    await refreshNoodles();
 
     // Submit logic to be implemented
     toast.dismiss(loadingToast);
