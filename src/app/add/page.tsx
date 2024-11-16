@@ -82,19 +82,25 @@ export default function AddNoodlePage() {
     toast.loading("uploading image...", {
       id: "uploading-image",
     });
-    if (e.target.files) {
+    if (e.target.files && e.target.files.length > 0) {
       try {
-        const base64Images = await Promise.all(
-          Array.from(e.target.files).map((file) => convertToBase64(file))
+        // Convert captured photo or selected files to File objects
+        const files = Array.from(e.target.files).map(
+          (file) => new File([file], file.name, { type: file.type })
         );
-        console.log("base64Images:", base64Images);
+
+        const base64Images = await Promise.all(
+          files.map((file) => convertToBase64(file))
+        );
+
         setImages((prev) => [...prev, ...base64Images]);
 
         toast.success("Image uploaded successfully!", {
           id: "uploading-image",
         });
       } catch (error) {
-        toast.error("Erreur lors de la conversion des images", {
+        console.error("Error processing image:", error);
+        toast.error("Error processing image", {
           id: "uploading-image",
         });
       }
@@ -239,50 +245,57 @@ export default function AddNoodlePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const loadingToast = toast.loading("Submitting your noodles...", {
-      id: "submitting-noodles",
-    });
-    if (!user) {
-      toast.error("Please unlock your profile first", {
+    try {
+      const loadingToast = toast.loading("Submitting your noodles...", {
+        id: "submitting-noodles",
+      });
+      if (!user) {
+        toast.error("Please unlock your profile first", {
+          icon: "❌",
+          id: "submitting-noodles",
+        });
+        return;
+      }
+
+      // Créer la description avec les informations de localisation
+      const locationInfo = location
+        ? `\n\nLocation: ${JSON.stringify({
+            latitude: location.latitude,
+            longitude: location.longitude,
+            address: location.address,
+          })}`
+        : "";
+
+      const groupName = name;
+      const options = {
+        description: description + locationInfo,
+        image: images[0] || "",
+        members: [MAIN_ADDRESS_SAVE],
+        private: false,
+        rules: {},
+      };
+
+      console.log("name:", name);
+      console.log("options:", options);
+      const createdGroup = await user.chat.group.create(groupName, options);
+
+      console.log("createdGroup:", createdGroup);
+
+      //refresh
+      await refreshNoodles();
+
+      // Submit logic to be implemented
+      toast.success("Noodles submitted successfully!", {
+        icon: "✅",
+        id: "submitting-noodles",
+      });
+    } catch (error) {
+      console.error("Error submitting noodles:", error);
+      toast.error("Error submitting noodles", {
         icon: "❌",
         id: "submitting-noodles",
       });
-      return;
     }
-
-    // Créer la description avec les informations de localisation
-    const locationInfo = location
-      ? `\n\nLocation: ${JSON.stringify({
-          latitude: location.latitude,
-          longitude: location.longitude,
-          address: location.address,
-        })}`
-      : "";
-
-    const groupName = name;
-    const options = {
-      description: description + locationInfo,
-      image: images[0] || "",
-      members: [MAIN_ADDRESS_SAVE],
-      private: false,
-      rules: {},
-    };
-
-    console.log("name:", name);
-    console.log("options:", options);
-    const createdGroup = await user.chat.group.create(groupName, options);
-
-    console.log("createdGroup:", createdGroup);
-
-    //refresh
-    await refreshNoodles();
-
-    // Submit logic to be implemented
-    toast.dismiss(loadingToast);
-    toast.success("Noodles submitted successfully!", {
-      icon: "✅",
-      id: "submitting-noodles",
-    });
   };
 
   return (
