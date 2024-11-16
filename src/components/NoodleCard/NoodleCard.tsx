@@ -134,7 +134,8 @@ const NoodleCard: React.FC<NoodleCardProps> = ({ noodle }) => {
           </div>
           <div className={styles.description}>{noodle.description}</div>
           <div className={styles.location}>
-            <LocationIcon /> {noodle.location.address}
+            <LocationIcon />{" "}
+            {noodle?.location?.address || "No location provided"}
           </div>
           <div className={styles.byWho}>
             <Blockies seed={noodle.author} />

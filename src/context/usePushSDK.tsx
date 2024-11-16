@@ -38,7 +38,7 @@ interface PushSDKContextProps {
   sendMessageToGroup: (
     chatId: string,
     message: string,
-    image?: string,
+    dataImages: string[],
     isToast?: boolean
   ) => Promise<void>;
   isLoadingSendingMessageToGroup: boolean;
@@ -189,17 +189,39 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
   const refreshNoodles = async () => {
     setIsLoadingNoodles(true);
     try {
-      const messagesRequests = await fetch(
-        `https://backend.epns.io/apis/v1/chat/users/eip155:${MAIN_ADDRESS_SAVE}/requests?page=1&limit=30`
-      );
-      const messagesChats = await fetch(
-        `https://backend.epns.io/apis/v1/chat/users/eip155:${MAIN_ADDRESS_SAVE}/chats?page=1&limit=30`
-      );
-      const dataRequests: IFeeds[] =
-        (await messagesRequests.json())?.requests || [];
-      const dataChats: IFeeds[] = (await messagesChats.json())?.chats || [];
+      const allRequests: IFeeds[] = [];
+      const allChats: IFeeds[] = [];
+      let page = 1;
+      let hasMore = true;
 
-      const mergedchats = [...dataRequests, ...dataChats];
+      while (hasMore) {
+        const [requestsResponse, chatsResponse] = await Promise.all([
+          fetch(
+            `https://backend.epns.io/apis/v1/chat/users/eip155:${MAIN_ADDRESS_SAVE}/requests?page=${page}&limit=30`
+          ),
+          fetch(
+            `https://backend.epns.io/apis/v1/chat/users/eip155:${MAIN_ADDRESS_SAVE}/chats?page=${page}&limit=30`
+          ),
+        ]);
+
+        const requestsData = await requestsResponse.json();
+        const chatsData = await chatsResponse.json();
+
+        const requests = requestsData?.requests || [];
+        const chats = chatsData?.chats || [];
+
+        allRequests.push(...requests);
+        allChats.push(...chats);
+
+        // Si l'une des réponses contient moins de 30 éléments, on arrête
+        if (requests.length < 30 && chats.length < 30) {
+          hasMore = false;
+        } else {
+          page++;
+        }
+      }
+
+      const mergedchats = [...allRequests, ...allChats];
       const formattedNoodles: Noodle[] = mergedchats
         .map((noodle, index) => {
           if (!noodle.groupInformation) return null;
@@ -212,19 +234,19 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
             address: "",
           };
 
-          // Extract location from description
-          const locationMatch = description.match(/Location: ({[^}]+})/);
-          if (locationMatch) {
-            try {
-              location = JSON.parse(locationMatch[1]);
-              // Supprimer la partie location de la description
-              description = description
-                .replace(/\n\nLocation: {[^}]+}/, "")
-                .trim();
-            } catch (error) {
-              console.error("Error parsing location:", error);
-            }
-          }
+          // // Extract location from description
+          // const locationMatch = description.match(/Location: ({[^}]+})/);
+          // if (locationMatch) {
+          //   try {
+          //     location = JSON.parse(locationMatch[1]);
+          //     // Supprimer la partie location de la description
+          //     description = description
+          //       .replace(/\n\nLocation: {[^}]+}/, "")
+          //       .trim();
+          //   } catch (error) {
+          //     console.error("Error parsing location:", error);
+          //   }
+          // }
 
           // Initialize images array with groupImage if it exists
           let images: string[] = [];
@@ -239,7 +261,7 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
             author: noodle.groupInformation.groupCreator.replace("eip155:", ""),
             title: noodle.groupInformation.groupName,
             description: description, // Description nettoyée
-            location: location, // Location extraite
+            location: location, // Location extraite, but empty
             likes: [],
             dislikes: [],
             messages: [],
@@ -254,6 +276,13 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
         formattedNoodles.map(async (noodle, index) => {
           const { messages, location, likes, dislikes } =
             await getMessagesForANoodle(noodle);
+
+          // console.log("----------");
+          // console.log("chatId:", noodle.id);
+          // console.log("messages:", messages);
+          // console.log("location:", location);
+          // console.log("likes:", likes);
+          // console.log("dislikes:", dislikes);
 
           // Récupère les images des messages de type Image
           const messageImages = messages
@@ -296,7 +325,7 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
       const urlToGetHash = `https://backend.epns.io/apis/v1/chat/users/eip155:${MAIN_ADDRESS_SAVE}/conversations/${chatId}/hash`;
       const hash = await fetch(urlToGetHash);
       const hashData = (await hash.json()).threadHash;
-      const urlToGetMessages = `https://backend.epns.io/apis/v1/chat/conversationhash/${hashData}?fetchLimit=10`;
+      const urlToGetMessages = `https://backend.epns.io/apis/v1/chat/conversationhash/${hashData}?fetchLimit=30`;
       const messages = await fetch(urlToGetMessages);
       const messagesData = await messages.json();
 
@@ -451,7 +480,7 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
     const { id: chatId } = noodle;
     if (isToast)
       toast.loading(`Voting ${isUp ? "up" : "down"} for ${noodle.title}...`, {
-        id: "vote-noodle",
+        id: "vote-noodle-" + chatId,
       });
 
     try {
@@ -469,7 +498,7 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
         console.log("User has already voted");
         if (isToast)
           toast.error("You have already voted for this noodle!", {
-            id: "vote-noodle",
+            id: "vote-noodle-" + chatId,
           });
         return;
       }
@@ -482,11 +511,16 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
         content: voteMessage,
       });
       await refreshMessagesOfOneChatId(chatId); // TODO: only fetch the messages of this specific noodle
-      if (isToast) toast.success("Vote sent!", { id: "vote-noodle" });
+      if (isToast)
+        toast.success("Vote sent for " + noodle.title, {
+          id: "vote-noodle-" + chatId,
+        });
     } catch (error) {
       console.error("Error voting for noodle:", error);
       if (isToast)
-        toast.error("Error voting for noodle", { id: "vote-noodle" });
+        toast.error("Error voting for " + noodle.title, {
+          id: "vote-noodle-" + chatId,
+        });
     } finally {
       setIsVotingNoodle(false);
     }
@@ -495,9 +529,10 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
   async function sendMessageToGroup(
     chatId: string,
     message: string,
-    image?: string,
+    dataImages: string[],
     isToast?: boolean // default true
   ) {
+    console.log("sendMessageToGroup", chatId, message, dataImages);
     try {
       if (isToast) toast.loading("Sending comment...", { id: "send-comment" });
       setIsLoadingSendingMessageToGroup(true);
@@ -510,7 +545,7 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
         toast.error("Noodle not found", { id: "send-comment" });
         return;
       }
-      if (!image && message.length === 0) {
+      if (dataImages.length === 0 && message.length === 0) {
         toast.error("You cannot send an empty comment", { id: "send-comment" });
         return;
       }
@@ -521,20 +556,27 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
         await joinThisNoodle(chatId);
       }
 
-      if (!image) {
+      if (message.length > 0) {
+        console.log("Going to send a text just here:", message);
         await user.chat.send(chatId, {
           type: "Text",
           content: message,
         });
-      } else {
-        console.log("Going to send an image just here:", image);
-        await user.chat.send(chatId, {
-          type: "Image",
-          content: image,
-        });
+      }
+      if (dataImages.length > 0) {
+        console.log("Going to send an image just here:", dataImages);
+        await Promise.all(
+          dataImages.map(async (image) => {
+            await user.chat.send(chatId, {
+              type: "Image",
+              content: image,
+            });
+          })
+        );
       }
       // Refresh the noodles to get the new comment // TODO later, only fetch the messages of this specific noodle
       await refreshMessagesOfOneChatId(chatId);
+      // await refreshNoodles();
 
       if (isToast) toast.success("Comment sent!", { id: "send-comment" });
     } catch (error) {

@@ -6,6 +6,7 @@ import LocationIcon from "@/assets/icons/location.svg";
 import { toast } from "react-hot-toast";
 import { id } from "ethers/lib/utils";
 import { MAIN_ADDRESS_SAVE, usePushSDK } from "@/context/usePushSDK";
+import { useTransitionRouter } from "next-view-transitions";
 
 // export type DETECT_TYPE_WORD =
 //   | "AW_SEND_LOCATION" // At the beginning of the chat, only by the author of the noodle
@@ -13,65 +14,67 @@ import { MAIN_ADDRESS_SAVE, usePushSDK } from "@/context/usePushSDK";
 //   | "AW_EXTRA_PICTURE" // Allow to send pictures and text in "the same message" (requires to add chatID right after the DETECT_TYPE_WORD)
 //   | "AW_SEND_VOTE"; // Only one vote by noodle, only once
 
+const resizeImage = (file: File): Promise<Blob> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = URL.createObjectURL(file);
+
+    img.onload = () => {
+      const MAX_SIZE = 320;
+      let width = img.width;
+      let height = img.height;
+
+      // Calculate new dimensions while keeping the ratio
+      if (width > height) {
+        if (width > MAX_SIZE) {
+          height = Math.round((height * MAX_SIZE) / width);
+          width = MAX_SIZE;
+        }
+      } else {
+        if (height > MAX_SIZE) {
+          width = Math.round((width * MAX_SIZE) / height);
+          height = MAX_SIZE;
+        }
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Convert canvas to Blob
+      canvas.toBlob((blob) => {
+        URL.revokeObjectURL(img.src); // Clean up
+        resolve(blob!);
+      }, file.type);
+    };
+  });
+};
+
+export const convertToBase64 = async (file: File): Promise<string> => {
+  // Resize file
+  const resizedBlob = await resizeImage(file);
+
+  // Convert to base64
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(resizedBlob);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+  });
+};
+
 export default function AddNoodlePage() {
+  const router = useTransitionRouter();
+
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const [location, setLocation] = useState<GPSLocation | null>(null);
 
   const { user, refreshNoodles, sendMessageToGroup } = usePushSDK();
-
-  const resizeImage = (file: File): Promise<Blob> => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.src = URL.createObjectURL(file);
-
-      img.onload = () => {
-        const MAX_SIZE = 320;
-        let width = img.width;
-        let height = img.height;
-
-        // Calculate new dimensions while keeping the ratio
-        if (width > height) {
-          if (width > MAX_SIZE) {
-            height = Math.round((height * MAX_SIZE) / width);
-            width = MAX_SIZE;
-          }
-        } else {
-          if (height > MAX_SIZE) {
-            width = Math.round((width * MAX_SIZE) / height);
-            height = MAX_SIZE;
-          }
-        }
-
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext("2d")!;
-        ctx.drawImage(img, 0, 0, width, height);
-
-        // Convert canvas to Blob
-        canvas.toBlob((blob) => {
-          URL.revokeObjectURL(img.src); // Clean up
-          resolve(blob!);
-        }, file.type);
-      };
-    });
-  };
-
-  const convertToBase64 = async (file: File): Promise<string> => {
-    // Resize file
-    const resizedBlob = await resizeImage(file);
-
-    // Convert to base64
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(resizedBlob);
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = (error) => reject(error);
-    });
-  };
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     try {
@@ -295,31 +298,33 @@ export default function AddNoodlePage() {
         console.log("Going to sendlocationMessage", locationMessage);
         const sentLocationMessage = await sendMessageToGroup(
           createdGroup.chatId,
-          locationMessage
+          locationMessage,
+          []
         );
         console.log("Sent location message:", sentLocationMessage);
       }
 
       // Send all of the extra pictures one by one in other messages
       if (images.length > 1) {
-        //for all images except the first one
-        for (let i = 1; i < images.length; i++) {
-          const sentExtraPictureMessage = await sendMessageToGroup(
-            createdGroup.chatId,
-            "",
-            images[i]
-          );
-          console.log("Sent extra picture message:", sentExtraPictureMessage);
-        }
+        const extraImages = images.slice(1);
+        const sentExtraPictureMessage = await sendMessageToGroup(
+          createdGroup.chatId,
+          "",
+          extraImages
+        );
+        console.log("Sent extra picture message:", sentExtraPictureMessage);
       }
 
-      // //refresh
-      // await refreshNoodles();
+      //refresh
+      await refreshNoodles();
 
       toast.success("Noodles submitted successfully!", {
         icon: "✅",
         id: "submitting-noodles",
       });
+
+      //go to la page createdGroup
+      router.push(`/noodle/${createdGroup.chatId}`);
     } catch (error) {
       console.error("Error submitting noodles:", error);
       toast.error("Error submitting noodles", {
@@ -327,6 +332,28 @@ export default function AddNoodlePage() {
         id: "submitting-noodles",
       });
     }
+  };
+
+  // Add validations
+  const getSubmitButtonText = (): string => {
+    if (images.length === 0) return "Please add at least one picture";
+    if (!name) return "You need to fill with the name";
+    if (name.length < 3) return "Name is too short";
+    if (!description) return "You need to fill with the description";
+    if (description.length < 3) return "Description is too short";
+    if (description.length > 150) return "Description is too long";
+    if (!location?.address) return "Please fill with an address";
+    return "Submit";
+  };
+
+  const isFormValid = (): boolean => {
+    return (
+      images.length > 0 &&
+      name.length >= 3 &&
+      description.length >= 3 &&
+      description.length <= 150 &&
+      !!location?.address
+    );
   };
 
   return (
@@ -443,8 +470,12 @@ export default function AddNoodlePage() {
           </div>
         </div>
 
-        <button type="submit" className={styles.submitButton}>
-          Submit
+        <button
+          type="submit"
+          className={styles.submitButton}
+          disabled={!isFormValid()}
+        >
+          {getSubmitButtonText()}
         </button>
       </form>
     </div>

@@ -207,18 +207,104 @@
         height: 28px !important;
         border-radius: 4px;
       }
-      textarea {
-        width: 100%;
-        height: 32px;
+      .commentInputContainer {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        height: fit-content;
         min-height: 32px;
-        font-family: inherit;
-        border: none;
-        outline: none;
-        padding: 4px;
-        box-sizing: border-box;
-        border-radius: 4px;
-        resize: none;
+        width: 100%;
         background-color: var(--very-light-color);
+        border-radius: 6px;
+        .linePreview {
+          width: 100%;
+          height: fit-content;
+          padding: 4px;
+          box-sizing: border-box;
+          min-height: 32px;
+          border-radius: 4px;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 4px;
+          .imagePreview {
+            position: relative;
+            width: 80px;
+            height: 80px;
+
+            img {
+              width: 100%;
+              height: 100%;
+              object-fit: cover;
+              border-radius: 2px;
+            }
+
+            .removeImage {
+              position: absolute;
+              top: -6px;
+              right: -6px;
+              background: var(--light-color);
+              border: none;
+              border-radius: 50%;
+              width: 16px;
+              min-width: 16px;
+              height: 16px;
+              min-height: 16px;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 16px;
+              padding: 0;
+              transition: 0.2s;
+
+              &:hover {
+                opacity: 0.8;
+                background-color: var(--very-light-color);
+              }
+
+              &:active {
+                background-color: var(--light-color);
+              }
+            }
+          }
+        }
+        .lineInterractions {
+          display: flex;
+          textarea {
+            width: 100%;
+            font-family: inherit;
+            height: 100%;
+            min-height: 32px;
+            border: none;
+            outline: none;
+            padding: 4px;
+            box-sizing: border-box;
+            border-radius: 4px;
+            resize: none;
+            background-color: transparent;
+            // background-color: var(--very-light-color);
+          }
+          .divCamera {
+            width: 32px;
+            min-width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            padding: 6px;
+            box-sizing: border-box;
+            cursor: pointer;
+            transition: 0.2s;
+            svg {
+              width: 100%;
+              height: 100%;
+            }
+            &:hover {
+              background-color: var(--very-light-color);
+            }
+            &:active {
+              background-color: var(--light-color);
+            }
+          }
+        }
       }
       button {
         border: none;

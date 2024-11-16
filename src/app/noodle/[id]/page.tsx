@@ -12,12 +12,15 @@ import LocationIcon from "@/assets/icons/location.svg";
 import RollsIcon from "@/assets/icons/rolls.svg";
 import CommentsIcon from "@/assets/icons/comments.svg";
 import SendIcon from "@/assets/icons/send.svg";
+import CameraIcon from "@/assets/icons/camera.svg";
 
 import styles from "./page.module.scss";
 import { usePushSDK } from "@/context/usePushSDK";
 import { Noodle } from "@/types/noodle";
 import { AddressLink } from "@/utils/AddressLink/AddressLink";
 import { useAccount } from "wagmi";
+import { convertToBase64 } from "@/app/add/page";
+import { image } from "@nextui-org/react";
 
 function formatTimeAgo(timestamp: number): string {
   const now = Date.now();
@@ -66,6 +69,7 @@ function Page({ params }: { params: { id: string } }) {
   );
   const [isLoading, setIsLoading] = useState(currentNoodle ? false : true);
   const [newComment, setNewComment] = useState("");
+  const [imagesPreview, setImagesPreview] = useState<string[]>([]);
 
   useEffect(() => {
     const foundNoodle = noodles.find((noodle) => noodle.id === id);
@@ -100,13 +104,16 @@ function Page({ params }: { params: { id: string } }) {
   };
 
   async function handleSendComment() {
+    console.log("handleSendComment", newComment, imagesPreview);
+    if (!newComment && imagesPreview.length === 0) return;
     await sendMessageToGroup(
       currentNoodle?.id || "",
       newComment,
-      undefined,
+      imagesPreview,
       true
     );
     setNewComment("");
+    setImagesPreview([]);
   }
 
   // Ajout de la fonction pour gérer les raccourcis clavier
@@ -136,6 +143,53 @@ function Page({ params }: { params: { id: string } }) {
     if (currentNoodle.dislikes.includes(address)) return "dislike";
     return null;
   };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    toast.loading("Téléchargement de l'image...", {
+      id: "uploading-image",
+    });
+
+    if (e.target.files && e.target.files.length > 0) {
+      try {
+        const files = Array.from(e.target.files).map(
+          (file) => new File([file], file.name, { type: file.type })
+        );
+
+        const base64Images = await Promise.all(
+          files.map((file) => convertToBase64(file))
+        );
+
+        setImagesPreview((prev) => [...prev, ...base64Images]);
+
+        toast.success("Image téléchargée avec succès !", {
+          id: "uploading-image",
+        });
+      } catch (error) {
+        console.error("Erreur lors du traitement de l'image:", error);
+        toast.error("Erreur lors du traitement de l'image", {
+          id: "uploading-image",
+        });
+      }
+    }
+  };
+
+  function handleDeleteImage(idx: number) {
+    setImagesPreview((prev) => prev.filter((_, i) => i !== idx));
+    toast("Image supprimée !", {
+      icon: "🗑️",
+    });
+  }
+
+  function handleCameraClick() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.multiple = true;
+    input.onchange = (e: Event) => {
+      handleImageUpload(e as unknown as React.ChangeEvent<HTMLInputElement>);
+    };
+    input.click();
+  }
 
   return (
     <div className={styles.contentNoodle}>
@@ -201,7 +255,8 @@ function Page({ params }: { params: { id: string } }) {
               {currentNoodle.description}
             </div>
             <div className={styles.location}>
-              <LocationIcon /> {currentNoodle.location.address}
+              <LocationIcon />{" "}
+              {currentNoodle?.location?.address || "No location provided"}
             </div>
           </div>
 
@@ -262,14 +317,37 @@ function Page({ params }: { params: { id: string } }) {
               <Blockies
                 seed={(address as string) || new Date().toISOString() || ""}
               />
-              <textarea
-                placeholder="Write your comment here..."
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                onKeyDown={handleKeyDown}
-                rows={1}
-                disabled={!hasUserVoted()}
-              />
+              <div className={styles.commentInputContainer}>
+                {imagesPreview.length > 0 && (
+                  <div className={styles.linePreview}>
+                    {imagesPreview.map((image, index) => (
+                      <div key={index} className={styles.imagePreview}>
+                        <img src={image} alt="preview" />
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteImage(index)}
+                          className={styles.removeImage}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className={styles.lineInterractions}>
+                  <textarea
+                    placeholder="Écrivez votre commentaire ici..."
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    rows={1}
+                    disabled={!hasUserVoted()}
+                  />
+                  <div className={styles.divCamera} onClick={handleCameraClick}>
+                    <CameraIcon />
+                  </div>
+                </div>
+              </div>
               <button onClick={handleSendComment} disabled={!hasUserVoted()}>
                 <SendIcon />
               </button>
