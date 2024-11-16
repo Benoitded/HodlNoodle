@@ -333,10 +333,6 @@ export default function AddNoodlePage() {
     <div className={styles.page}>
       <h2>Add a Noodles</h2>
 
-      <button type="button" onClick={handleGetBase64image}>
-        Get base64 image
-      </button>
-
       <form onSubmit={handleSubmit} className={styles.form}>
         <div className={styles.field}>
           <label>Pictures of the noodles</label>

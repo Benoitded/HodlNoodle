@@ -6,7 +6,7 @@
 }
 
 @mixin primary-div($isClickable: false, $isResponsive: false) {
-  background-color: var(--light-color);
+  background-color: #ffcb85;
   // background-color: red;
   backdrop-filter: blur(10px);
   border-radius: 12px;

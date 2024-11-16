@@ -93,7 +93,7 @@
         &.addANoodle {
           height: 45px;
           transform: translateY(0px);
-          background-color: inherit;
+          background-color: var(--light-color);
           svg {
             width: 20px;
             min-width: 20px;

@@ -42,6 +42,7 @@ interface PushSDKContextProps {
     isToast?: boolean
   ) => Promise<void>;
   isLoadingSendingMessageToGroup: boolean;
+  refreshMessagesOfOneChatId: (chatId: string) => Promise<void>;
 }
 
 const PushSDKContext = createContext<PushSDKContextProps>({
@@ -60,6 +61,7 @@ const PushSDKContext = createContext<PushSDKContextProps>({
   isVotingNoodle: false,
   sendMessageToGroup: () => Promise.resolve(),
   isLoadingSendingMessageToGroup: false,
+  refreshMessagesOfOneChatId: () => Promise.resolve(),
 });
 
 interface ContextProviderProps {
@@ -479,7 +481,7 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
         type: "Text",
         content: voteMessage,
       });
-      await refreshNoodles(); // TODO: only fetch the messages of this specific noodle
+      await refreshMessagesOfOneChatId(chatId); // TODO: only fetch the messages of this specific noodle
       if (isToast) toast.success("Vote sent!", { id: "vote-noodle" });
     } catch (error) {
       console.error("Error voting for noodle:", error);
@@ -532,7 +534,7 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
         });
       }
       // Refresh the noodles to get the new comment // TODO later, only fetch the messages of this specific noodle
-      await refreshNoodles();
+      await refreshMessagesOfOneChatId(chatId);
 
       if (isToast) toast.success("Comment sent!", { id: "send-comment" });
     } catch (error) {
@@ -543,6 +545,38 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
       if (isToast) toast.dismiss("send-comment");
     }
   }
+
+  const refreshMessagesOfOneChatId = async (chatId: string) => {
+    try {
+      const noodle = noodles.find((n) => n.id === chatId);
+      if (!noodle) return;
+
+      const { messages, location, likes, dislikes } =
+        await getMessagesForANoodle(noodle);
+
+      const messageImages = messages
+        .filter((message) => message.type === "Image")
+        .map((message) => message.dataMessage);
+
+      const updatedNoodle = {
+        ...noodle,
+        messages,
+        location,
+        likes,
+        dislikes,
+        images: [
+          ...(noodle.images.length > 0 ? [noodle.images[0]] : []),
+          ...messageImages,
+        ],
+      };
+
+      setNoodles((prevNoodles) =>
+        prevNoodles.map((n) => (n.id === chatId ? updatedNoodle : n))
+      );
+    } catch (error) {
+      console.error("Error refreshing messages for chatId:", chatId, error);
+    }
+  };
 
   // Reset joinedGroups when address changes
   useEffect(() => {
@@ -567,6 +601,7 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
         isVotingNoodle,
         sendMessageToGroup,
         isLoadingSendingMessageToGroup,
+        refreshMessagesOfOneChatId,
       }}
     >
       {children}
