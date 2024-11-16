@@ -21,6 +21,12 @@ export interface GPSLocation {
 export interface Message {
   author: string;
   dataMessage: string;
-  dataImage?: string;
   timestamp: number;
+  type: "Text" | "Image";
 }
+
+export type DETECT_TYPE_WORD =
+  | "AW_SEND_LOCATION" // At the beginning of the chat, only by the author of the noodle
+  | "AW_EXTRA_PICTURE_NOODLE" // Extra picture from the author only at the creation of the noodle, so they are not added as a message
+  | "AW_EXTRA_PICTURE" // Allow to send pictures and text in "the same message" (requires to add chatID right after the DETECT_TYPE_WORD)
+  | "AW_SEND_VOTE"; // Only one vote by noodle, only once

@@ -50,15 +50,22 @@ export default function Home() {
 
   return (
     <div className={styles.page}>
-      {(isLoadingNoodles || isRefreshing) && (
+      {isLoadingNoodles || isRefreshing ? (
         <div className={styles.loadingContainer}>
           <div className={styles.loadingSpinner}></div>
           <p>{isRefreshing ? "Refreshing..." : "Loading noodles..."}</p>
         </div>
+      ) : (
+        <>
+          {noodles.length > 0 ? (
+            noodles.map((noodle) => (
+              <NoodleCard key={noodle.id} noodle={noodle} />
+            ))
+          ) : (
+            <p>No noodles found</p>
+          )}
+        </>
       )}
-
-      {!isLoadingNoodles &&
-        noodles.map((noodle) => <NoodleCard key={noodle.id} noodle={noodle} />)}
     </div>
   );
 }

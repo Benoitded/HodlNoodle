@@ -82,14 +82,14 @@ const NoodleCard: React.FC<NoodleCardProps> = ({ noodle }) => {
     e.preventDefault();
     e.stopPropagation();
     if (hasUserVoted()) return;
-    voteForTheNoodle(noodle.id, address || "", true, true);
+    voteForTheNoodle(noodle, address || "", true, true);
   }
 
   function handleDislike(noodle: Noodle, e: React.MouseEvent<HTMLDivElement>) {
     e.preventDefault();
     e.stopPropagation();
     if (hasUserVoted()) return;
-    voteForTheNoodle(noodle.id, address || "", false, true);
+    voteForTheNoodle(noodle, address || "", false, true);
   }
 
   return (

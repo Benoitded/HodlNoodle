@@ -258,7 +258,7 @@ function Page({ params }: { params: { id: string } }) {
                 }`}
                 onClick={() => {
                   if (hasUserVoted()) return;
-                  voteForTheNoodle(currentNoodle.id, address || "", true, true);
+                  voteForTheNoodle(currentNoodle, address || "", true, true);
                 }}
               />
               <span
@@ -280,12 +280,7 @@ function Page({ params }: { params: { id: string } }) {
                 }`}
                 onClick={() => {
                   if (hasUserVoted()) return;
-                  voteForTheNoodle(
-                    currentNoodle.id,
-                    address || "",
-                    false,
-                    true
-                  );
+                  voteForTheNoodle(currentNoodle, address || "", false, true);
                 }}
               />
             </div>
@@ -344,10 +339,10 @@ function Page({ params }: { params: { id: string } }) {
                         </span>
                       </div>
                       <div className={styles.comment}>
-                        {message.dataMessage}
-                        {message.dataImage && (
+                        {message.type === "Text" && message.dataMessage}
+                        {message.type === "Image" && (
                           <img
-                            src={message.dataImage}
+                            src={message.dataMessage}
                             className={styles.commentImage}
                             alt={
                               "Comment image to the noodle " +

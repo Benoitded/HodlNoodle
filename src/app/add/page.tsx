@@ -1,11 +1,17 @@
 "use client";
 import { useState, useCallback } from "react";
 import styles from "./page.module.scss";
-import { GPSLocation } from "@/types/noodle";
+import { GPSLocation, DETECT_TYPE_WORD } from "@/types/noodle";
 import LocationIcon from "@/assets/icons/location.svg";
 import { toast } from "react-hot-toast";
 import { id } from "ethers/lib/utils";
 import { MAIN_ADDRESS_SAVE, usePushSDK } from "@/context/usePushSDK";
+
+// export type DETECT_TYPE_WORD =
+//   | "AW_SEND_LOCATION" // At the beginning of the chat, only by the author of the noodle
+//   | "AW_EXTRA_PICTURE_NOODLE" // Extra picture from the author only at the creation of the noodle, so they are not added as a message
+//   | "AW_EXTRA_PICTURE" // Allow to send pictures and text in "the same message" (requires to add chatID right after the DETECT_TYPE_WORD)
+//   | "AW_SEND_VOTE"; // Only one vote by noodle, only once
 
 export default function AddNoodlePage() {
   const [name, setName] = useState("");
@@ -13,7 +19,7 @@ export default function AddNoodlePage() {
   const [images, setImages] = useState<string[]>([]);
   const [location, setLocation] = useState<GPSLocation | null>(null);
 
-  const { user, refreshNoodles } = usePushSDK();
+  const { user, refreshNoodles, sendMessageToGroup } = usePushSDK();
 
   const resizeImage = (file: File): Promise<Blob> => {
     return new Promise((resolve) => {
@@ -79,9 +85,11 @@ export default function AddNoodlePage() {
   }, []);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log("handleImageUpload", e);
     toast.loading("uploading image...", {
       id: "uploading-image",
     });
+
     if (e.target.files && e.target.files.length > 0) {
       try {
         // Convert captured photo or selected files to File objects
@@ -243,10 +251,15 @@ export default function AddNoodlePage() {
     setImages((prev) => prev.filter((_, i) => i !== idx));
   };
 
+  async function handleGetBase64image() {
+    // Going to print all images I have in the image list, go the direct data I should have when I send it
+    console.log("images", images);
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const loadingToast = toast.loading("Submitting your noodles...", {
+      toast.loading("Submitting your noodles...", {
         id: "submitting-noodles",
       });
       if (!user) {
@@ -257,18 +270,9 @@ export default function AddNoodlePage() {
         return;
       }
 
-      // Créer la description avec les informations de localisation
-      const locationInfo = location
-        ? `\n\nLocation: ${JSON.stringify({
-            latitude: location.latitude,
-            longitude: location.longitude,
-            address: location.address,
-          })}`
-        : "";
-
       const groupName = name;
       const options = {
-        description: description + locationInfo,
+        description: description,
         image: images[0] || "",
         members: [MAIN_ADDRESS_SAVE],
         private: false,
@@ -278,13 +282,40 @@ export default function AddNoodlePage() {
       console.log("name:", name);
       console.log("options:", options);
       const createdGroup = await user.chat.group.create(groupName, options);
+      console.log("Just createdGroup:", createdGroup);
 
-      console.log("createdGroup:", createdGroup);
+      // Send location in a separate message with the DETECT_TYPE_WORD
+      const detectTypeWord: DETECT_TYPE_WORD = "AW_SEND_LOCATION";
+      if (location) {
+        const locationMessage = `${detectTypeWord}\n${JSON.stringify({
+          latitude: location.latitude,
+          longitude: location.longitude,
+          address: location.address,
+        })}`;
+        console.log("Going to sendlocationMessage", locationMessage);
+        const sentLocationMessage = await sendMessageToGroup(
+          createdGroup.chatId,
+          locationMessage
+        );
+        console.log("Sent location message:", sentLocationMessage);
+      }
 
-      //refresh
-      await refreshNoodles();
+      // Send all of the extra pictures one by one in other messages
+      if (images.length > 1) {
+        //for all images except the first one
+        for (let i = 1; i < images.length; i++) {
+          const sentExtraPictureMessage = await sendMessageToGroup(
+            createdGroup.chatId,
+            "",
+            images[i]
+          );
+          console.log("Sent extra picture message:", sentExtraPictureMessage);
+        }
+      }
 
-      // Submit logic to be implemented
+      // //refresh
+      // await refreshNoodles();
+
       toast.success("Noodles submitted successfully!", {
         icon: "✅",
         id: "submitting-noodles",
@@ -301,6 +332,10 @@ export default function AddNoodlePage() {
   return (
     <div className={styles.page}>
       <h2>Add a Noodles</h2>
+
+      <button type="button" onClick={handleGetBase64image}>
+        Get base64 image
+      </button>
 
       <form onSubmit={handleSubmit} className={styles.form}>
         <div className={styles.field}>
@@ -326,24 +361,7 @@ export default function AddNoodlePage() {
               <button
                 type="button"
                 onClick={() => {
-                  const input = document.createElement("input");
-                  input.type = "file";
-                  input.accept = "image/*";
-                  input.multiple = true;
-                  input.capture = "environment";
-                  input.onchange = (e: Event) => {
-                    handleImageUpload(
-                      e as unknown as React.ChangeEvent<HTMLInputElement>
-                    );
-                  };
-                  input.click();
-                }}
-              >
-                Take a photo
-              </button>
-              <button
-                type="button"
-                onClick={() => {
+                  console.log("Choose a photo");
                   const input = document.createElement("input");
                   input.type = "file";
                   input.accept = "image/*";
@@ -356,7 +374,7 @@ export default function AddNoodlePage() {
                   input.click();
                 }}
               >
-                Choose from gallery
+                Choose a photo
               </button>
             </div>
           </div>

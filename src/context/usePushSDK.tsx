@@ -10,10 +10,11 @@ import { CONSTANTS } from "@pushprotocol/restapi";
 import { Client } from "viem";
 import { useAccount, useConnectorClient, useWalletClient } from "wagmi";
 import { providers } from "ethers";
-import { Noodle, Message } from "@/types/noodle";
+import { Noodle, Message, GPSLocation, DETECT_TYPE_WORD } from "@/types/noodle";
 import { toast } from "react-hot-toast";
 
-export const MAIN_ADDRESS_SAVE = "0x7426dd8546c43f4Da37545594874575fCE166b9E";
+// export const MAIN_ADDRESS_SAVE = "0x7426dd8546c43f4Da37545594874575fCE166b9E";
+export const MAIN_ADDRESS_SAVE = "0x00000000000000000000000000b3570b4070C01E";
 
 interface PushSDKContextProps {
   user: PushAPI | undefined;
@@ -28,7 +29,7 @@ interface PushSDKContextProps {
   joinThisNoodle: (chatId: string) => Promise<void>;
   isJoiningNoodle: boolean;
   voteForTheNoodle: (
-    chatId: string,
+    noodle: Noodle,
     address: string,
     isUp: boolean,
     isToast?: boolean
@@ -231,7 +232,7 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
 
           return {
             id: noodle.chatId || "",
-            timestamp: new Date("2024-11-15T19:57:36.000Z").getTime(),
+            timestamp: new Date(noodle.intentTimestamp).getTime(),
             rank: index + 1,
             author: noodle.groupInformation.groupCreator.replace("eip155:", ""),
             title: noodle.groupInformation.groupName,
@@ -247,29 +248,30 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
 
       console.log("formattedNoodles:", formattedNoodles);
 
-      const messagesPromises = formattedNoodles
-        .sort((a, b) => a.timestamp - b.timestamp)
-        .map(async (noodle, index) => {
-          const { messages, likes, dislikes } = await getMessagesForAChatId(
-            noodle.id
-          );
+      const noodlesWithMessages = await Promise.all(
+        formattedNoodles.map(async (noodle, index) => {
+          const { messages, location, likes, dislikes } =
+            await getMessagesForANoodle(noodle);
 
-          // Add images from messages to the noodle's images array
+          // Récupère les images des messages de type Image
           const messageImages = messages
-            .filter((message) => message.dataImage)
-            .map((message) => message.dataImage as string);
+            .filter((message) => message.type === "Image")
+            .map((message) => message.dataMessage);
 
           return {
             ...noodle,
             rank: index + 1,
             messages,
+            location,
             likes,
             dislikes,
-            images: [...noodle.images, ...messageImages],
+            images: [
+              ...(noodle.images.length > 0 ? [noodle.images[0]] : []),
+              ...messageImages,
+            ],
           };
-        });
-
-      const noodlesWithMessages = await Promise.all(messagesPromises);
+        })
+      );
 
       console.log("noodlesWithMessages:", noodlesWithMessages);
       //trie par timestamp
@@ -281,26 +283,27 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
     }
   };
 
-  async function getMessagesForAChatId(chatId: string): Promise<{
+  async function getMessagesForANoodle(noodle: Noodle): Promise<{
     messages: Message[];
     likes: string[];
     dislikes: string[];
+    location?: GPSLocation;
   }> {
+    const { id: chatId } = noodle;
     try {
-      // console.log("start fetching messages");
       const urlToGetHash = `https://backend.epns.io/apis/v1/chat/users/eip155:${MAIN_ADDRESS_SAVE}/conversations/${chatId}/hash`;
-      // console.log("urlToGetHash:", urlToGetHash);
       const hash = await fetch(urlToGetHash);
       const hashData = (await hash.json()).threadHash;
-      // console.log("hashData:", hashData);
       const urlToGetMessages = `https://backend.epns.io/apis/v1/chat/conversationhash/${hashData}?fetchLimit=10`;
-      // console.log("urlToGetMessages:", urlToGetMessages);
       const messages = await fetch(urlToGetMessages);
       const messagesData = await messages.json();
 
       const likes: string[] = [];
       const dislikes: string[] = [];
       const messagesFormatted: Message[] = [];
+      let location: GPSLocation | undefined;
+      const noodleCreator = noodle.author;
+      const noodleCreationTime = noodle.timestamp;
 
       messagesData.forEach((message: any) => {
         const messageContent =
@@ -311,42 +314,70 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
             : message.messageObj?.content || "";
 
         const author = message.fromDID.replace("eip155:", "");
+        const type = message.messageType as "Text" | "Image";
 
-        // Check if message is a vote
-        if (messageContent === "I vote up for this noodle!") {
-          likes.push(author);
-          return; // Skip adding to messages
-        }
-        if (messageContent === "I vote down for this noodle!") {
-          dislikes.push(author);
-          return; // Skip adding to messages
+        // Détection des messages spéciaux
+        const detectTypeWordLocation: DETECT_TYPE_WORD = "AW_SEND_LOCATION";
+        if (messageContent.startsWith(detectTypeWordLocation)) {
+          try {
+            const locationJson = messageContent.split("\n")[1];
+            location = JSON.parse(locationJson);
+            return; // Skip adding location message to messages
+          } catch (error) {
+            console.error("Error parsing location:", error);
+          }
         }
 
-        // Process normal message
+        // Détection des votes
+        const detectTypeWordVote: DETECT_TYPE_WORD = "AW_SEND_VOTE";
+        if (messageContent.startsWith(detectTypeWordVote)) {
+          try {
+            const voteJson = messageContent.split("\n")[1];
+            const { isUp } = JSON.parse(voteJson);
+            if (isUp) {
+              likes.push(author);
+            } else {
+              dislikes.push(author);
+            }
+            return; // Skip adding vote message to messages
+          } catch (error) {
+            console.error("Error parsing vote:", error);
+          }
+        }
+
         let dataMessage = "";
-        let dataImage = undefined;
-
         try {
           const parsedContent = JSON.parse(messageContent);
-          if (parsedContent.content?.startsWith("data:image")) {
-            dataImage = parsedContent.content;
+          if (type === "Image") {
+            // Skip les images de l'auteur dans les 10 premières minutes
+            if (
+              author === noodleCreator &&
+              noodleCreationTime &&
+              message.timestamp - noodleCreationTime < 600000
+            ) {
+              return;
+            }
+            dataMessage = parsedContent.content;
           }
         } catch {
           dataMessage = messageContent;
         }
 
-        messagesFormatted.push({
-          author,
-          dataMessage,
-          dataImage,
-          timestamp: message.timestamp,
-        });
+        if (dataMessage) {
+          messagesFormatted.push({
+            author,
+            dataMessage,
+            timestamp: message.timestamp,
+            type,
+          });
+        }
       });
 
       return {
         messages: messagesFormatted,
         likes,
         dislikes,
+        location,
       };
     } catch (error) {
       console.error("Error fetching messages:", error);
@@ -409,14 +440,15 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
   };
 
   const voteForTheNoodle = async (
-    chatId: string,
+    noodle: Noodle,
     address: string,
     isUp: boolean,
     isToast?: boolean
   ) => {
     if (!user) return;
+    const { id: chatId } = noodle;
     if (isToast)
-      toast.loading(`Voting ${isUp ? "up" : "down"}...`, {
+      toast.loading(`Voting ${isUp ? "up" : "down"} for ${noodle.title}...`, {
         id: "vote-noodle",
       });
 
@@ -428,7 +460,7 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
       }
 
       // Get current votes for this noodle
-      const { likes, dislikes } = await getMessagesForAChatId(chatId);
+      const { likes, dislikes } = await getMessagesForANoodle(noodle);
 
       // Check if user has already voted
       if (likes.includes(address) || dislikes.includes(address)) {
@@ -440,10 +472,12 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
         return;
       }
 
-      // Send vote message
+      // Send vote message with the new format
+      const detectTypeWord: DETECT_TYPE_WORD = "AW_SEND_VOTE";
+      const voteMessage = `${detectTypeWord}\n${JSON.stringify({ isUp })}`;
       await user.chat.send(chatId, {
         type: "Text",
-        content: `${isUp ? "I vote up" : "I vote down"} for this noodle!`,
+        content: voteMessage,
       });
       await refreshNoodles(); // TODO: only fetch the messages of this specific noodle
       if (isToast) toast.success("Vote sent!", { id: "vote-noodle" });
@@ -474,7 +508,7 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
         toast.error("Noodle not found", { id: "send-comment" });
         return;
       }
-      if (message.length === 0) {
+      if (!image && message.length === 0) {
         toast.error("You cannot send an empty comment", { id: "send-comment" });
         return;
       }
@@ -485,12 +519,18 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
         await joinThisNoodle(chatId);
       }
 
-      const aliceMessagesBob = await user.chat.send(chatId, {
-        type: "Text",
-        content: message,
-      });
-      console.log(aliceMessagesBob);
-
+      if (!image) {
+        await user.chat.send(chatId, {
+          type: "Text",
+          content: message,
+        });
+      } else {
+        console.log("Going to send an image just here:", image);
+        await user.chat.send(chatId, {
+          type: "Image",
+          content: image,
+        });
+      }
       // Refresh the noodles to get the new comment // TODO later, only fetch the messages of this specific noodle
       await refreshNoodles();
 
