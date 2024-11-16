@@ -13,42 +13,54 @@ import NoodleCard from "@/components/NoodleCard/NoodleCard";
 export default function Home() {
   const { address } = useAccount();
   const { data: walletClient, isError, isLoading } = useWalletClient();
-  const { user, handleChatprofileUnlock, noodles } = usePushSDK();
+  const {
+    user,
+    handleChatprofileUnlock,
+    noodles,
+    isLoadingNoodles,
+    refreshNoodles,
+  } = usePushSDK();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [startY, setStartY] = useState(0);
 
-  async function getInfoUser() {
-    if (!user) return;
-    const response = await user.profile.info();
-    console.log("response info user", response);
-  }
-  async function getChatUser() {
-    if (!user) return;
-    const chats = await user.chat.list("CHATS");
-    console.log("getChatUser", chats);
-  }
-  async function getChatRequestUser() {
-    if (!user) return;
-    const chats = await user.chat.list("REQUESTS");
-    console.log("getChatRequestUser", chats);
-  }
+  // Handle pull to refresh
+  const handleTouchStart = (e: TouchEvent) => {
+    setStartY(e.touches[0].clientY);
+  };
+
+  const handleTouchMove = async (e: TouchEvent) => {
+    const currentY = e.touches[0].clientY;
+    const diff = currentY - startY;
+
+    // If pulled down more than 100px and at the top of the page
+    if (diff > 100 && window.scrollY === 0 && !isRefreshing) {
+      setIsRefreshing(true);
+      await refreshNoodles();
+      setIsRefreshing(false);
+    }
+  };
+
   useEffect(() => {
-    getInfoUser();
-    getChatUser();
-    getChatRequestUser();
-  }, [user]);
+    document.addEventListener("touchstart", handleTouchStart);
+    document.addEventListener("touchmove", handleTouchMove);
 
-  function handleClick() {
-    console.log("handleClick", user);
-    getInfoUser();
-    getChatUser();
-    getChatRequestUser();
-  }
+    return () => {
+      document.removeEventListener("touchstart", handleTouchStart);
+      document.removeEventListener("touchmove", handleTouchMove);
+    };
+  }, [startY, isRefreshing]);
 
   return (
     <div className={styles.page}>
-      {/* <button onClick={handleClick}>Click to get data</button> */}
-      {noodles.map((noodle) => (
-        <NoodleCard noodle={noodle} />
-      ))}
+      {(isLoadingNoodles || isRefreshing) && (
+        <div className={styles.loadingContainer}>
+          <div className={styles.loadingSpinner}></div>
+          <p>{isRefreshing ? "Refreshing..." : "Loading noodles..."}</p>
+        </div>
+      )}
+
+      {!isLoadingNoodles &&
+        noodles.map((noodle) => <NoodleCard key={noodle.id} noodle={noodle} />)}
     </div>
   );
 }

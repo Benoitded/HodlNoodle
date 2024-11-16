@@ -12,7 +12,7 @@ import { useAccount, useConnectorClient, useWalletClient } from "wagmi";
 import { providers } from "ethers";
 import { Noodle } from "@/types/noodle";
 
-const MAIN_ADDRESS_SAVE = "0x7426dd8546c43f4Da37545594874575fCE166b9E";
+export const MAIN_ADDRESS_SAVE = "0x7426dd8546c43f4Da37545594874575fCE166b9E";
 
 interface PushSDKContextProps {
   user: PushAPI | undefined;
@@ -20,6 +20,8 @@ interface PushSDKContextProps {
   disconnectPush: () => void;
   isLoadingUnlock: boolean;
   noodles: Noodle[];
+  refreshNoodles: () => Promise<void>;
+  isLoadingNoodles: boolean;
 }
 
 const PushSDKContext = createContext<PushSDKContextProps>({
@@ -28,6 +30,8 @@ const PushSDKContext = createContext<PushSDKContextProps>({
   disconnectPush: () => {},
   isLoadingUnlock: false,
   noodles: [],
+  refreshNoodles: () => Promise.resolve(),
+  isLoadingNoodles: false,
 });
 
 interface ContextProviderProps {
@@ -54,6 +58,7 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
   const [isLoadingUnlock, setIsLoadingUnlock] = useState(false);
   const [noodles, setNoodles] = useState<any[]>([]);
   const { data: walletClient, isError, isLoading } = useWalletClient();
+  const [isLoadingNoodles, setIsLoadingNoodles] = useState(false);
 
   // Utility functions for PGP key management
   const getUniquePGPKey = (account: string) => {
@@ -99,12 +104,12 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
   useEffect(() => {
     if (address && walletClient) {
       restoreUserFromStorage();
-      getAllMessages();
+      refreshNoodles();
     }
   }, [address, walletClient]);
 
   useEffect(() => {
-    getAllMessages();
+    refreshNoodles();
   }, []);
 
   // Initial unlock function (only for first time)
@@ -145,83 +150,93 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
     setUser(undefined);
   }, [address]);
 
-  async function getAllMessages() {
-    // if (!user) return;
-    const messagesRequests = await fetch(
-      `https://backend.epns.io/apis/v1/chat/users/eip155:${MAIN_ADDRESS_SAVE}/requests?page=1&limit=30`
-    );
-    const messagesChats = await fetch(
-      `https://backend.epns.io/apis/v1/chat/users/eip155:${MAIN_ADDRESS_SAVE}/chats?page=1&limit=30`
-    );
-    const dataRequests: IFeeds[] =
-      (await messagesRequests.json())?.requests || [];
-    const dataChats: IFeeds[] = (await messagesChats.json())?.chats || [];
-    console.log("getAllMessages:", dataRequests, dataChats);
+  const refreshNoodles = async () => {
+    setIsLoadingNoodles(true);
+    try {
+      const messagesRequests = await fetch(
+        `https://backend.epns.io/apis/v1/chat/users/eip155:${MAIN_ADDRESS_SAVE}/requests?page=1&limit=30`
+      );
+      const messagesChats = await fetch(
+        `https://backend.epns.io/apis/v1/chat/users/eip155:${MAIN_ADDRESS_SAVE}/chats?page=1&limit=30`
+      );
+      const dataRequests: IFeeds[] =
+        (await messagesRequests.json())?.requests || [];
+      const dataChats: IFeeds[] = (await messagesChats.json())?.chats || [];
 
-    const mergedchats = [...dataRequests, ...dataChats];
-    const formattedChats: Noodle[] = mergedchats
-      .map((noodle, index) => {
-        if (!noodle.groupInformation) return null;
-        // fetch all messages
+      const mergedchats = [...dataRequests, ...dataChats];
+      const formattedChats: Noodle[] = mergedchats
+        .map((noodle, index) => {
+          if (!noodle.groupInformation) return null;
 
-        // try {
-        //   if (user) {
-        //     const aliceChatHistoryWithBob = await user.chat.history(
-        //       noodle.chatId || ""
-        //     );
-        //     console.log("aliceChatHistoryWithBob:", aliceChatHistoryWithBob);
-        //   } else {
-        //     console.log("user not found");
-        //   }
-        // } catch (error) {
-        //   console.error("Error fetching chat history for chatId:", error);
-        // }
-
-        const messageContent =
-          typeof noodle.msg.messageObj === "string"
-            ? noodle.msg.messageObj
-            : Array.isArray(noodle.msg.messageObj)
-            ? noodle.msg.messageObj[0]?.content || ""
-            : noodle.msg.messageObj?.content || "";
-        //maintenant on tente un json parse de ça, si ça fait quelque chose on le met dans un tableau avec toutes les images
-        let images: string[] = [
-          "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA40lEQVR4AcXBsY3CQBRF0cuTYwqgjenAdSCCCTexpgLkCkZuYAJEsjmxK2Dq2JwG2PSzgSVLK71zDl/fP2+CXDrReLwRra8LW8bjjWh9XYhaTUTCTJgJs+F+nYgyF6LzvPChdLac54UPpRPdrxORMBNmwkyYCTNhJswOz9PjzQ6tJrbk0tlDmAkzYTbwR6uJ6H6diNbCpvF4IzrPC1EunUiYCTNhdnieHm92aDWxJZfOHsJMmAmzodVElEsnajUR5dLZ0moiyqUTtZqIhJkwE2ZDLp2o1cR/ajUR5dKJhJkwE2a/g4E5Ln7jne0AAAAASUVORK5CYII=",
-        ];
-        try {
-          const jsonContent = JSON.parse(messageContent);
-          images = [...images, jsonContent.content];
-          //   console.log("add this image to the array:", images);
-        } catch (error) {
-          console.error("Error parsing message content:", error);
-        }
-
-        return {
-          id: noodle.chatId || "",
-          rank: index + 1,
-          author: noodle.groupInformation.groupCreator.replace("eip155:", ""),
-          title: noodle.groupInformation.groupName,
-          description: noodle.groupInformation.groupDescription,
-          location: {
+          // Extraire la localisation de la description
+          let description = noodle.groupInformation.groupDescription;
+          let location = {
             latitude: 0,
             longitude: 0,
-            address: "123 Sukhumvit Road, Bangkok, Thailand",
-          },
-          likes: 0,
-          dislikes: 0,
-          comments: [
-            {
-              author: noodle.msg.fromDID.replace("eip155:", ""),
-              dataMessage: messageContent,
-              timestamp: noodle.msg.timestamp || Date.now(),
-            },
-          ],
-          images: images,
-        };
-      })
-      .filter((noodle) => noodle !== null);
-    console.log("formattedChats:", formattedChats);
-    setNoodles(formattedChats);
-  }
+            address: "",
+          };
+
+          const locationMatch = description.match(/Location: ({[^}]+})/);
+          if (locationMatch) {
+            try {
+              location = JSON.parse(locationMatch[1]);
+              // Supprimer la partie location de la description
+              description = description
+                .replace(/\n\nLocation: {[^}]+}/, "")
+                .trim();
+            } catch (error) {
+              console.error("Error parsing location:", error);
+            }
+          }
+
+          const messageContent =
+            typeof noodle.msg.messageObj === "string"
+              ? noodle.msg.messageObj
+              : Array.isArray(noodle.msg.messageObj)
+              ? noodle.msg.messageObj[0]?.content || ""
+              : noodle.msg.messageObj?.content || "";
+          //maintenant on tente un json parse de ça, si ça fait quelque chose on le met dans un tableau avec toutes les images
+          let images: string[] = [];
+          if (noodle.groupInformation.groupImage) {
+            images.push(noodle.groupInformation.groupImage);
+          }
+          try {
+            const jsonContent = JSON.parse(messageContent);
+            images = [...images, jsonContent.content];
+            //   console.log("add this image to the array:", images);
+          } catch (error) {
+            console.error("Error parsing message content:", error);
+          }
+
+          return {
+            id: noodle.chatId || "",
+            rank: index + 1,
+            author: noodle.groupInformation.groupCreator.replace("eip155:", ""),
+            title: noodle.groupInformation.groupName,
+            description: description, // Description nettoyée
+            location: location, // Location extraite
+            likes: 0,
+            dislikes: 0,
+            comments: [
+              {
+                author: noodle.msg.fromDID.replace("eip155:", ""),
+                dataMessage: messageContent,
+                timestamp: noodle.msg.timestamp || Date.now(),
+              },
+            ],
+            images: images,
+          };
+        })
+        .filter((noodle) => noodle !== null);
+
+      console.log("formattedChats:", formattedChats);
+      setNoodles(formattedChats);
+    } catch (error) {
+      console.error("Error refreshing noodles:", error);
+    } finally {
+      setIsLoadingNoodles(false);
+    }
+  };
 
   return (
     <PushSDKContext.Provider
@@ -231,6 +246,8 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
         disconnectPush,
         isLoadingUnlock,
         noodles,
+        refreshNoodles,
+        isLoadingNoodles,
       }}
     >
       {children}

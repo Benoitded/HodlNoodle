@@ -79,6 +79,33 @@
   }
 }
 
+@media only screen and (min-width: 750px) {
+  .menu {
+    .navigation {
+      .itemMenu {
+        font-size: 12px;
+        svg {
+          width: 16px;
+          min-width: 16px;
+          height: 16px;
+          min-height: 16px;
+        }
+        &.addANoodle {
+          height: 45px;
+          transform: translateY(0px);
+          background-color: inherit;
+          svg {
+            width: 20px;
+            min-width: 20px;
+            height: 20px;
+            min-height: 20px;
+          }
+        }
+      }
+    }
+  }
+}
+
 @media only screen and (max-width: 800px) {
   .menu {
     padding: 0 25px;
