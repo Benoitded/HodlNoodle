@@ -190,23 +190,10 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
             }
           }
 
-          const messageContent =
-            typeof noodle.msg.messageObj === "string"
-              ? noodle.msg.messageObj
-              : Array.isArray(noodle.msg.messageObj)
-              ? noodle.msg.messageObj[0]?.content || ""
-              : noodle.msg.messageObj?.content || "";
-          //maintenant on tente un json parse de ça, si ça fait quelque chose on le met dans un tableau avec toutes les images
+          // Initialize images array with groupImage if it exists
           let images: string[] = [];
           if (noodle.groupInformation.groupImage) {
             images.push(noodle.groupInformation.groupImage);
-          }
-          try {
-            const imagesContent = JSON.parse(messageContent).content;
-            images = [...images, imagesContent];
-            //   console.log("add this image to the array:", images);
-          } catch (error) {
-            console.error("Error parsing message content:", error);
           }
 
           return {
@@ -226,12 +213,22 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
 
       const messagesPromises = formattedNoodles.map(async (noodle) => {
         const messages = await getMessagesForAChatId(noodle.id);
-        return { ...noodle, messages };
+
+        // Add images from messages to the noodle's images array
+        const messageImages = messages
+          .filter((message) => message.dataImage)
+          .map((message) => message.dataImage as string);
+
+        return {
+          ...noodle,
+          messages,
+          images: [...noodle.images, ...messageImages],
+        };
       });
 
       const noodlesWithMessages = await Promise.all(messagesPromises);
 
-      console.log("noodlesWithMessages:", noodlesWithMessages);
+      //console.log("noodlesWithMessages:", noodlesWithMessages);
       setNoodles(noodlesWithMessages);
     } catch (error) {
       console.error("Error refreshing noodles:", error);

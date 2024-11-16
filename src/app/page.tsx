@@ -1,10 +1,8 @@
 "use client";
-
 import Image from "next/image";
 import styles from "./page.module.scss";
 import { Link } from "next-view-transitions";
-import { useCallback, useState } from "react";
-import { useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { PushAPI, CONSTANTS, user } from "@pushprotocol/restapi";
 import { useAccount, useWalletClient } from "wagmi";
 import { usePushSDK } from "@/context/usePushSDK";

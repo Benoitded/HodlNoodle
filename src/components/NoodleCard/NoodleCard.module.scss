@@ -5,6 +5,11 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
+  cursor: pointer;
+  &:hover {
+    // opacity: 0.8;
+    background-color: var(--very-light-color);
+  }
   .divImg {
     width: 120px;
     min-width: 120px;

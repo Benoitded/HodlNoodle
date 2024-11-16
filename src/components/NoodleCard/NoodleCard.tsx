@@ -3,25 +3,24 @@
 // src/components/NoodleCard.tsx
 import React, { useRef, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-// import Link from "next/link";
 import { Link } from "next-view-transitions";
 import Image from "next/image";
 import { saveAs } from "file-saver";
 import { toast } from "react-hot-toast";
-import styles from "./NoodleCard.module.scss";
 import Blockies from "react-blockies";
-
-import Logo from "@/assets/logo.png";
 import { useAccount, useDisconnect, useEnsName } from "wagmi";
-
-import CopyIcon from "@/assets/icons/copy.svg";
-import DownloadIcon from "@/assets/icons/download.svg";
 import { useAppKit } from "@reown/appkit/react";
 import { usePushSDK } from "@/context/usePushSDK";
-import { Noodle } from "@/types/noodle";
+
+import styles from "./NoodleCard.module.scss";
+import Logo from "@/assets/logo.png";
+import CopyIcon from "@/assets/icons/copy.svg";
+import DownloadIcon from "@/assets/icons/download.svg";
 import LocationIcon from "@/assets/icons/location.svg";
 import RollsIcon from "@/assets/icons/rolls.svg";
 import CommentsIcon from "@/assets/icons/comments.svg";
+
+import { Noodle } from "@/types/noodle";
 import { AddressLink } from "@/utils/AddressLink/AddressLink";
 
 interface NoodleCardProps {
@@ -38,7 +37,7 @@ const NoodleCard: React.FC<NoodleCardProps> = ({ noodle }) => {
   const [activeImage, setActiveImage] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Fonction pour scroller vers une image spécifique
+  // Function to scroll to a specific image
   const scrollToImage = (index: number) => {
     const container = scrollRef.current;
     if (!container) return;
@@ -51,7 +50,7 @@ const NoodleCard: React.FC<NoodleCardProps> = ({ noodle }) => {
     setActiveImage(index);
   };
 
-  // Observer le défilement
+  // Observe the scrolling
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
@@ -65,22 +64,32 @@ const NoodleCard: React.FC<NoodleCardProps> = ({ noodle }) => {
     return () => container.removeEventListener("scroll", handleScroll);
   }, []);
 
-  function handleLike(noodle: Noodle) {
+  function handleLike(noodle: Noodle, e: React.MouseEvent<HTMLDivElement>) {
+    e.preventDefault();
+    e.stopPropagation();
     toast.success(`Liked ${noodle.title}!`, {
       icon: "🍜",
     });
   }
 
-  function handleDislike(noodle: Noodle) {
+  function handleDislike(noodle: Noodle, e: React.MouseEvent<HTMLDivElement>) {
+    e.preventDefault();
+    e.stopPropagation();
     toast(`Disliked ${noodle.title}`, {
       icon: "🗑️",
     });
   }
 
   return (
-    <div className={styles.noodleCard}>
+    <Link href={`/noodle/${noodle.id}`} className={styles.noodleCard}>
       <div className={styles.divImg}>
-        <div className={styles.imageContainer} ref={scrollRef}>
+        <div
+          className={styles.imageContainer}
+          ref={scrollRef}
+          style={{
+            viewTransitionName: "images-noodle-" + noodle.id.toLowerCase(),
+          }}
+        >
           {noodle.images.map((image, index) => (
             <div key={index} className={styles.imageWrapper} data-index={index}>
               <Image src={image} alt="noodle" width={120} height={120} />
@@ -102,7 +111,13 @@ const NoodleCard: React.FC<NoodleCardProps> = ({ noodle }) => {
       <div className={styles.divInfo}>
         <div className={styles.topDivInfo}>
           <div className={styles.firstLine}>
-            <h3>{noodle.title}</h3>
+            <h3
+              style={{
+                viewTransitionName: "name-noodle-" + noodle.id.toLowerCase(),
+              }}
+            >
+              {noodle.title}
+            </h3>
             <div className={styles.ranking}>#{noodle.rank}</div>
           </div>
           <div className={styles.description}>{noodle.description}</div>
@@ -128,17 +143,21 @@ const NoodleCard: React.FC<NoodleCardProps> = ({ noodle }) => {
           <div className={styles.likesDislikes}>
             <RollsIcon
               className={`${styles.rollsIcon} ${styles.like}`}
-              onClick={() => handleLike(noodle)}
+              onClick={(e: React.MouseEvent<HTMLDivElement>) =>
+                handleLike(noodle, e)
+              }
             />
             <span>{noodle.likes - noodle.dislikes}</span>
             <RollsIcon
               className={`${styles.rollsIcon} ${styles.dislike}`}
-              onClick={() => handleDislike(noodle)}
+              onClick={(e: React.MouseEvent<HTMLDivElement>) =>
+                handleDislike(noodle, e)
+              }
             />
           </div>
         </div>
       </div>
-    </div>
+    </Link>
   );
 };
 
