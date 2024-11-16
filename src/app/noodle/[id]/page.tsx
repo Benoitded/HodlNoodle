@@ -17,6 +17,7 @@ import styles from "./page.module.scss";
 import { usePushSDK } from "@/context/usePushSDK";
 import { Noodle } from "@/types/noodle";
 import { AddressLink } from "@/utils/AddressLink/AddressLink";
+import { useAccount } from "wagmi";
 
 function formatTimeAgo(timestamp: number): string {
   const now = Date.now();
@@ -49,8 +50,17 @@ function formatTimeAgo(timestamp: number): string {
 }
 
 function Page({ params }: { params: { id: string } }) {
-  const { noodles, user, refreshNoodles } = usePushSDK();
+  const {
+    noodles,
+    user,
+    refreshNoodles,
+    getIsJoinedNoodle,
+    joinThisNoodle,
+    voteForTheNoodle,
+    sendMessageToGroup,
+  } = usePushSDK();
   const id = params.id;
+  const { address } = useAccount();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeImage, setActiveImage] = useState(0);
   const [currentNoodle, setCurrentNoodle] = useState<Noodle | null>(
@@ -58,6 +68,17 @@ function Page({ params }: { params: { id: string } }) {
   );
   const [isLoading, setIsLoading] = useState(currentNoodle ? false : true);
   const [newComment, setNewComment] = useState("");
+  const [isJoined, setIsJoined] = useState(false);
+
+  useEffect(() => {
+    async function fetchIsJoined() {
+      if (!user) return;
+      setIsJoined(
+        await getIsJoinedNoodle(currentNoodle?.id || "", address || "")
+      );
+    }
+    fetchIsJoined();
+  }, [user, currentNoodle, address]);
 
   useEffect(() => {
     setCurrentNoodle(noodles.find((noodle) => noodle.id === id) || null);
@@ -77,18 +98,6 @@ function Page({ params }: { params: { id: string } }) {
     return () => container.removeEventListener("scroll", handleScroll);
   }, []);
 
-  function handleLike(noodle: Noodle) {
-    toast.success(`Liked ${noodle.title}!`, {
-      icon: "🍜",
-    });
-  }
-
-  function handleDislike(noodle: Noodle) {
-    toast(`Disliked ${noodle.title}`, {
-      icon: "🗑️",
-    });
-  }
-
   // Function to scroll to a specific image
   const scrollToImage = (index: number) => {
     const container = scrollRef.current;
@@ -103,33 +112,40 @@ function Page({ params }: { params: { id: string } }) {
   };
 
   async function handleSendComment() {
-    toast.loading("Sending comment...", { id: "send-comment" });
-    if (!user) {
-      toast.error("You are not connected", { id: "send-comment" });
-      return;
-    }
-    if (!currentNoodle) {
-      toast.error("Noodle not found", { id: "send-comment" });
-      return;
-    }
-    if (newComment.length === 0) {
-      toast.error("You cannot send an empty comment", { id: "send-comment" });
-      return;
-    }
-
-    const aliceMessagesBob = await user.chat.send(currentNoodle.id, {
-      type: "Text",
-      content: newComment,
-    });
-    console.log(aliceMessagesBob);
-
-    // Refresh the noodles to get the new comment // TODO later, only fetch the messages of this specific noodle
-    await refreshNoodles();
-
-    //Then erase the message in the input
+    await sendMessageToGroup(
+      currentNoodle?.id || "",
+      newComment,
+      undefined,
+      true
+    );
     setNewComment("");
+    // toast.loading("Sending comment...", { id: "send-comment" });
+    // if (!user) {
+    //   toast.error("You are not connected", { id: "send-comment" });
+    //   return;
+    // }
+    // if (!currentNoodle) {
+    //   toast.error("Noodle not found", { id: "send-comment" });
+    //   return;
+    // }
+    // if (newComment.length === 0) {
+    //   toast.error("You cannot send an empty comment", { id: "send-comment" });
+    //   return;
+    // }
 
-    toast.success("Comment sent!", { id: "send-comment" });
+    // const aliceMessagesBob = await user.chat.send(currentNoodle.id, {
+    //   type: "Text",
+    //   content: newComment,
+    // });
+    // console.log(aliceMessagesBob);
+
+    // // Refresh the noodles to get the new comment // TODO later, only fetch the messages of this specific noodle
+    // await refreshNoodles();
+
+    // //Then erase the message in the input
+    // setNewComment("");
+
+    // toast.success("Comment sent!", { id: "send-comment" });
   }
 
   // Ajout de la fonction pour gérer les raccourcis clavier
@@ -138,6 +154,26 @@ function Page({ params }: { params: { id: string } }) {
       e.preventDefault();
       handleSendComment();
     }
+  };
+
+  function handleJoinNoodle() {
+    if (!currentNoodle) return;
+    joinThisNoodle(currentNoodle.id);
+  }
+
+  const hasUserVoted = () => {
+    if (!currentNoodle || !address) return false;
+    return (
+      currentNoodle.likes.includes(address) ||
+      currentNoodle.dislikes.includes(address)
+    );
+  };
+
+  const getUserVoteType = () => {
+    if (!currentNoodle || !address) return null;
+    if (currentNoodle.likes.includes(address)) return "like";
+    if (currentNoodle.dislikes.includes(address)) return "dislike";
+    return null;
   };
 
   return (
@@ -213,13 +249,44 @@ function Page({ params }: { params: { id: string } }) {
             <div className={styles.leftRateNoodle}>Rate the noodle:</div>
             <div className={styles.likesDislikes}>
               <RollsIcon
-                className={`${styles.rollsIcon} ${styles.like}`}
-                onClick={() => handleLike(currentNoodle)}
+                className={`${styles.rollsIcon} ${styles.like} ${
+                  getUserVoteType() === "like" ? styles.voted : ""
+                } ${
+                  hasUserVoted() && getUserVoteType() !== "like"
+                    ? styles.disabled
+                    : ""
+                }`}
+                onClick={() => {
+                  if (hasUserVoted()) return;
+                  voteForTheNoodle(currentNoodle.id, address || "", true, true);
+                }}
               />
-              <span>{currentNoodle.likes - currentNoodle.dislikes}</span>
+              <span
+                className={
+                  currentNoodle.likes.length - currentNoodle.dislikes.length > 0
+                    ? styles.positif
+                    : styles.negatif
+                }
+              >
+                {currentNoodle.likes.length - currentNoodle.dislikes.length}
+              </span>
               <RollsIcon
-                className={`${styles.rollsIcon} ${styles.dislike}`}
-                onClick={() => handleDislike(currentNoodle)}
+                className={`${styles.rollsIcon} ${styles.dislike} ${
+                  getUserVoteType() === "dislike" ? styles.voted : ""
+                } ${
+                  hasUserVoted() && getUserVoteType() !== "dislike"
+                    ? styles.disabled
+                    : ""
+                }`}
+                onClick={() => {
+                  if (hasUserVoted()) return;
+                  voteForTheNoodle(
+                    currentNoodle.id,
+                    address || "",
+                    false,
+                    true
+                  );
+                }}
               />
             </div>
           </section>
@@ -231,8 +298,14 @@ function Page({ params }: { params: { id: string } }) {
             </div>
 
             <div className={styles.commentInput}>
+              {!isJoined && (
+                <div className={styles.notJoined}>
+                  You did not join this noodle yet!
+                  <button onClick={handleJoinNoodle}>Join now</button>
+                </div>
+              )}
               <Blockies
-                seed={currentNoodle.author || new Date().toISOString()}
+                seed={(address as string) || new Date().toISOString() || ""}
               />
               <textarea
                 placeholder="Write your comment here..."

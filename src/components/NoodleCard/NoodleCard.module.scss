@@ -150,6 +150,12 @@
         display: flex;
         align-items: center;
         gap: 6px;
+        .positif {
+          color: #025e2a;
+        }
+        .negatif {
+          color: #ae0f0f;
+        }
         .rollsIcon {
           width: 24px;
           height: 24px;
@@ -166,6 +172,19 @@
           }
           &.dislike {
             stroke: #ae0f0f;
+          }
+          &.voted {
+            opacity: 1;
+            &:hover {
+              background-color: inherit;
+            }
+          }
+          &.disabled {
+            opacity: 0.3;
+            cursor: inherit;
+            &:hover {
+              background-color: transparent;
+            }
           }
         }
       }

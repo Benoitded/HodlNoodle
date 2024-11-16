@@ -32,7 +32,7 @@ const NoodleCard: React.FC<NoodleCardProps> = ({ noodle }) => {
   const { isConnected, address } = useAccount();
   const { data: ensName } = useEnsName({ address, chainId: 1 });
   const { open, close } = useAppKit();
-  const { user, handleChatprofileUnlock, disconnectPush, isLoadingUnlock } =
+  const { user, voteForTheNoodle, isVotingNoodle, isLoadingNoodles } =
     usePushSDK();
   const [activeImage, setActiveImage] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -64,20 +64,32 @@ const NoodleCard: React.FC<NoodleCardProps> = ({ noodle }) => {
     return () => container.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Ajouter ces fonctions utilitaires
+  const hasUserVoted = () => {
+    return (
+      noodle.likes.includes(address || "") ||
+      noodle.dislikes.includes(address || "")
+    );
+  };
+
+  const getUserVoteType = () => {
+    if (noodle.likes.includes(address || "")) return "like";
+    if (noodle.dislikes.includes(address || "")) return "dislike";
+    return null;
+  };
+
   function handleLike(noodle: Noodle, e: React.MouseEvent<HTMLDivElement>) {
     e.preventDefault();
     e.stopPropagation();
-    toast.success(`Liked ${noodle.title}!`, {
-      icon: "🍜",
-    });
+    if (hasUserVoted()) return;
+    voteForTheNoodle(noodle.id, address || "", true, true);
   }
 
   function handleDislike(noodle: Noodle, e: React.MouseEvent<HTMLDivElement>) {
     e.preventDefault();
     e.stopPropagation();
-    toast(`Disliked ${noodle.title}`, {
-      icon: "🗑️",
-    });
+    if (hasUserVoted()) return;
+    voteForTheNoodle(noodle.id, address || "", false, true);
   }
 
   return (
@@ -142,14 +154,34 @@ const NoodleCard: React.FC<NoodleCardProps> = ({ noodle }) => {
           </div>
           <div className={styles.likesDislikes}>
             <RollsIcon
-              className={`${styles.rollsIcon} ${styles.like}`}
+              className={`${styles.rollsIcon} ${styles.like} ${
+                getUserVoteType() === "like" ? styles.voted : ""
+              } ${
+                hasUserVoted() && getUserVoteType() !== "like"
+                  ? styles.disabled
+                  : ""
+              }`}
               onClick={(e: React.MouseEvent<HTMLDivElement>) =>
                 handleLike(noodle, e)
               }
             />
-            <span>{noodle.likes - noodle.dislikes}</span>
+            <span
+              className={
+                noodle.likes.length - noodle.dislikes.length > 0
+                  ? styles.positif
+                  : styles.negatif
+              }
+            >
+              {noodle.likes.length - noodle.dislikes.length}
+            </span>
             <RollsIcon
-              className={`${styles.rollsIcon} ${styles.dislike}`}
+              className={`${styles.rollsIcon} ${styles.dislike} ${
+                getUserVoteType() === "dislike" ? styles.voted : ""
+              } ${
+                hasUserVoted() && getUserVoteType() !== "dislike"
+                  ? styles.disabled
+                  : ""
+              }`}
               onClick={(e: React.MouseEvent<HTMLDivElement>) =>
                 handleDislike(noodle, e)
               }

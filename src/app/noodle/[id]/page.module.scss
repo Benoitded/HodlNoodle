@@ -119,6 +119,12 @@
       display: flex;
       align-items: center;
       gap: 6px;
+      .positif {
+        color: #025e2a;
+      }
+      .negatif {
+        color: #ae0f0f;
+      }
       .rollsIcon {
         width: 24px;
         height: 24px;
@@ -135,6 +141,20 @@
         }
         &.dislike {
           stroke: #ae0f0f;
+        }
+        &.voted {
+          opacity: 1;
+          cursor: inherit;
+          &:hover {
+            background-color: inherit;
+          }
+        }
+        &.disabled {
+          opacity: 0.3;
+          cursor: inherit;
+          &:hover {
+            background-color: transparent;
+          }
         }
       }
     }
@@ -154,6 +174,34 @@
       align-items: center;
       gap: 6px;
       width: 100%;
+      position: relative;
+      .notJoined {
+        position: absolute;
+        left: -3px;
+        top: -3px;
+        width: calc(100% + 6px);
+        height: calc(100% + 6px);
+        backdrop-filter: blur(2px);
+        background-color: rgba(255, 255, 255, 0.1);
+        color: #00000080;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 12px;
+        font-size: 14px;
+        white-space: nowrap;
+        button {
+          background-color: var(--light-color);
+          border-radius: 4px;
+          width: fit-content;
+          padding: 2px 8px;
+          box-sizing: border-box;
+          height: 28px;
+          &:hover {
+            opacity: 0.6;
+          }
+        }
+      }
       canvas {
         width: 28px !important;
         height: 28px !important;
