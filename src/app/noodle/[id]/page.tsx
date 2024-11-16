@@ -53,8 +53,6 @@ function Page({ params }: { params: { id: string } }) {
   const {
     noodles,
     user,
-    refreshNoodles,
-    getIsJoinedNoodle,
     joinThisNoodle,
     voteForTheNoodle,
     sendMessageToGroup,
@@ -68,21 +66,11 @@ function Page({ params }: { params: { id: string } }) {
   );
   const [isLoading, setIsLoading] = useState(currentNoodle ? false : true);
   const [newComment, setNewComment] = useState("");
-  const [isJoined, setIsJoined] = useState(false);
 
   useEffect(() => {
-    async function fetchIsJoined() {
-      if (!user) return;
-      setIsJoined(
-        await getIsJoinedNoodle(currentNoodle?.id || "", address || "")
-      );
-    }
-    fetchIsJoined();
-  }, [user, currentNoodle, address]);
-
-  useEffect(() => {
-    setCurrentNoodle(noodles.find((noodle) => noodle.id === id) || null);
-    setIsLoading(currentNoodle ? false : true);
+    const foundNoodle = noodles.find((noodle) => noodle.id === id);
+    setCurrentNoodle(foundNoodle || null);
+    setIsLoading(!foundNoodle);
   }, [id, noodles]);
 
   useEffect(() => {
@@ -119,33 +107,6 @@ function Page({ params }: { params: { id: string } }) {
       true
     );
     setNewComment("");
-    // toast.loading("Sending comment...", { id: "send-comment" });
-    // if (!user) {
-    //   toast.error("You are not connected", { id: "send-comment" });
-    //   return;
-    // }
-    // if (!currentNoodle) {
-    //   toast.error("Noodle not found", { id: "send-comment" });
-    //   return;
-    // }
-    // if (newComment.length === 0) {
-    //   toast.error("You cannot send an empty comment", { id: "send-comment" });
-    //   return;
-    // }
-
-    // const aliceMessagesBob = await user.chat.send(currentNoodle.id, {
-    //   type: "Text",
-    //   content: newComment,
-    // });
-    // console.log(aliceMessagesBob);
-
-    // // Refresh the noodles to get the new comment // TODO later, only fetch the messages of this specific noodle
-    // await refreshNoodles();
-
-    // //Then erase the message in the input
-    // setNewComment("");
-
-    // toast.success("Comment sent!", { id: "send-comment" });
   }
 
   // Ajout de la fonction pour gérer les raccourcis clavier
@@ -293,10 +254,9 @@ function Page({ params }: { params: { id: string } }) {
             </div>
 
             <div className={styles.commentInput}>
-              {!isJoined && (
+              {!hasUserVoted() && (
                 <div className={styles.notJoined}>
-                  You did not join this noodle yet!
-                  <button onClick={handleJoinNoodle}>Join now</button>
+                  Rate the noodle to comment!
                 </div>
               )}
               <Blockies
@@ -308,8 +268,9 @@ function Page({ params }: { params: { id: string } }) {
                 onChange={(e) => setNewComment(e.target.value)}
                 onKeyDown={handleKeyDown}
                 rows={1}
+                disabled={!hasUserVoted()}
               />
-              <button onClick={handleSendComment}>
+              <button onClick={handleSendComment} disabled={!hasUserVoted()}>
                 <SendIcon />
               </button>
             </div>
