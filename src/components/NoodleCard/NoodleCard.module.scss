@@ -9,8 +9,63 @@
     width: 120px;
     min-width: 120px;
     height: 120px;
-    background-color: red;
+    background-color: #025e2a;
     border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+
+    .imageContainer {
+      display: flex;
+      scroll-snap-type: x mandatory;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+      &::-webkit-scrollbar {
+        display: none;
+      }
+
+      .imageWrapper {
+        flex: 0 0 100%;
+        scroll-snap-align: start;
+        height: 100%;
+        img {
+          pointer-events: none;
+        }
+      }
+    }
+
+    .indicators {
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 4px;
+
+      .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background-color: rgba(255, 255, 255, 0.5);
+        transition: 0.2s;
+        cursor: pointer;
+
+        &:hover {
+          background-color: rgba(255, 255, 255, 0.8);
+        }
+
+        &.active {
+          background-color: white;
+        }
+      }
+    }
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 12px;
+    }
   }
   .divInfo {
     width: 100%;
@@ -22,17 +77,96 @@
       display: flex;
       flex-direction: column;
       justify-content: center;
-      gap: 12px;
+      gap: 6px;
       .firstLine {
         display: flex;
         justify-content: space-between;
         align-items: center;
         h3 {
           margin: 0;
+          font-size: 16px;
+        }
+        .ranking {
+          background-color: var(--light-color);
+          border-radius: 4px;
+          padding: 2px 4px;
+          font-size: 14px;
         }
       }
       .description {
         opacity: 0.5;
+        font-size: 10px;
+      }
+      .location,
+      .byWho {
+        opacity: 0.5;
+        font-size: 8px;
+      }
+      .byWho {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        canvas {
+          width: 12px !important;
+          height: 12px !important;
+          border-radius: 2px;
+        }
+      }
+    }
+    .bottomDivInfo {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      .nbMessages {
+        opacity: 0.5;
+        font-size: 8px;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        svg {
+          width: 15px;
+          height: auto;
+        }
+      }
+      .likesDislikes {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        .rollsIcon {
+          width: 24px;
+          height: 24px;
+          cursor: pointer;
+          transition: 0.2s;
+          border-radius: 4px;
+          padding: 2px;
+          &:hover {
+            opacity: 0.8;
+            background-color: var(--very-light-color);
+          }
+          &:active {
+            background-color: var(--light-color);
+          }
+          &.dislike {
+            stroke: #ae0f0f;
+          }
+        }
+      }
+    }
+  }
+}
+
+//media if over 800px then change the font size of the description and the byWho to 10px
+@media (min-width: 800px) {
+  .noodleCard {
+    .divInfo {
+      .topDivInfo {
+        .description {
+          font-size: 14px;
+        }
+        .location,
+        .byWho {
+          font-size: 12px;
+        }
       }
     }
   }

@@ -45,7 +45,7 @@ export default function Home() {
 
   return (
     <div className={styles.page}>
-      <button onClick={handleClick}>Click to get data</button>
+      {/* <button onClick={handleClick}>Click to get data</button> */}
       {noodles.map((noodle) => (
         <NoodleCard noodle={noodle} />
       ))}

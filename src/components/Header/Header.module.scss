@@ -138,10 +138,20 @@
     &::before {
       display: none;
     }
+    .logoWrapper {
+      .logo {
+        min-width: auto;
+        width: fit-content;
+      }
+    }
+    .connect {
+      min-width: auto;
+      // width: fit-content;
+    }
   }
 }
 
-@media only screen and (max-width: 450px) {
+@media only screen and (max-width: 250px) {
   .header {
     .logo {
       min-width: 47px;

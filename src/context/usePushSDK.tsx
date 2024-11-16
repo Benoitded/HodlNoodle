@@ -103,6 +103,10 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
     }
   }, [address, walletClient]);
 
+  useEffect(() => {
+    getAllMessages();
+  }, []);
+
   // Initial unlock function (only for first time)
   async function handleChatprofileUnlock() {
     if (!address || !walletClient) return;
@@ -142,6 +146,7 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
   }, [address]);
 
   async function getAllMessages() {
+    // if (!user) return;
     const messagesRequests = await fetch(
       `https://backend.epns.io/apis/v1/chat/users/eip155:${MAIN_ADDRESS_SAVE}/requests?page=1&limit=30`
     );
@@ -152,26 +157,54 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
       (await messagesRequests.json())?.requests || [];
     const dataChats: IFeeds[] = (await messagesChats.json())?.chats || [];
     console.log("getAllMessages:", dataRequests, dataChats);
-    const formattedChats: Noodle[] = [
-      ...(dataRequests || []),
-      ...(dataChats || []),
-    ]
-      .map((noodle) => {
+
+    const mergedchats = [...dataRequests, ...dataChats];
+    const formattedChats: Noodle[] = mergedchats
+      .map((noodle, index) => {
         if (!noodle.groupInformation) return null;
+        // fetch all messages
+
+        // try {
+        //   if (user) {
+        //     const aliceChatHistoryWithBob = await user.chat.history(
+        //       noodle.chatId || ""
+        //     );
+        //     console.log("aliceChatHistoryWithBob:", aliceChatHistoryWithBob);
+        //   } else {
+        //     console.log("user not found");
+        //   }
+        // } catch (error) {
+        //   console.error("Error fetching chat history for chatId:", error);
+        // }
+
         const messageContent =
           typeof noodle.msg.messageObj === "string"
             ? noodle.msg.messageObj
             : Array.isArray(noodle.msg.messageObj)
             ? noodle.msg.messageObj[0]?.content || ""
             : noodle.msg.messageObj?.content || "";
+        //maintenant on tente un json parse de ça, si ça fait quelque chose on le met dans un tableau avec toutes les images
+        let images: string[] = [
+          "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA40lEQVR4AcXBsY3CQBRF0cuTYwqgjenAdSCCCTexpgLkCkZuYAJEsjmxK2Dq2JwG2PSzgSVLK71zDl/fP2+CXDrReLwRra8LW8bjjWh9XYhaTUTCTJgJs+F+nYgyF6LzvPChdLac54UPpRPdrxORMBNmwkyYCTNhJswOz9PjzQ6tJrbk0tlDmAkzYTbwR6uJ6H6diNbCpvF4IzrPC1EunUiYCTNhdnieHm92aDWxJZfOHsJMmAmzodVElEsnajUR5dLZ0moiyqUTtZqIhJkwE2ZDLp2o1cR/ajUR5dKJhJkwE2a/g4E5Ln7jne0AAAAASUVORK5CYII=",
+        ];
+        try {
+          const jsonContent = JSON.parse(messageContent);
+          images = [...images, jsonContent.content];
+          //   console.log("add this image to the array:", images);
+        } catch (error) {
+          console.error("Error parsing message content:", error);
+        }
+
         return {
           id: noodle.chatId || "",
-          author: noodle.msg.fromDID.replace("eip155:", ""),
+          rank: index + 1,
+          author: noodle.groupInformation.groupCreator.replace("eip155:", ""),
           title: noodle.groupInformation.groupName,
           description: noodle.groupInformation.groupDescription,
           location: {
             latitude: 0,
             longitude: 0,
+            address: "123 Sukhumvit Road, Bangkok, Thailand",
           },
           likes: 0,
           dislikes: 0,
@@ -182,6 +215,7 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({
               timestamp: noodle.msg.timestamp || Date.now(),
             },
           ],
+          images: images,
         };
       })
       .filter((noodle) => noodle !== null);

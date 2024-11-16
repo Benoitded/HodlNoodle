@@ -1,0 +1,15 @@
+.addressLink {
+  a {
+    display: flex;
+    justify-self: center;
+    align-items: center;
+    gap: 4px;
+    svg {
+      width: fit-content;
+      fill: black;
+    }
+  }
+  &:hover {
+    opacity: 0.5;
+  }
+}
