@@ -11,11 +11,11 @@ import styles from "./Menu.module.scss";
 
 import { Tooltip } from "@nextui-org/react";
 
-import OpenIcon from "@/assets/icons/open.svg";
-import GitBookIcon from "@/assets/brands/gitbook.svg";
-import GitHubIcon from "@/assets/brands/github.svg";
-import TwitterIcon from "@/assets/brands/twitter.svg";
-import DiscordIcon from "@/assets/brands/discord.svg";
+import FireIcon from "@/assets/navigation/fire.svg";
+import EarthIcon from "@/assets/navigation/earth.svg";
+import PlusIcon from "@/assets/navigation/plus.svg";
+import HeartIcon from "@/assets/navigation/heart.svg";
+import ProfileIcon from "@/assets/navigation/profile.svg";
 
 const Menu: React.FC = () => {
   const pathname = usePathname();
@@ -61,7 +61,7 @@ const Menu: React.FC = () => {
           `}
           href={"/"}
         >
-          {/* {isActive(["/"]) ? <div className={styles.borderDown} /> : null} */}
+          <FireIcon />
           Trending
         </Link>
         <Link
@@ -71,15 +71,17 @@ const Menu: React.FC = () => {
           `}
           href={"/map"}
         >
+          <EarthIcon />
           Map
         </Link>
         <Link
           onClick={() => setIsMenuOpen(false)}
-          className={`${styles.itemMenu}
+          className={`${styles.itemMenu} ${styles.addANoodle}
           ${isActive(["/add", "/add/*"]) ? styles.current : ""}
           `}
           href={"/add"}
         >
+          <PlusIcon />
           Add a noodle
         </Link>
         <Link
@@ -89,6 +91,7 @@ const Menu: React.FC = () => {
           `}
           href={"/favorites"}
         >
+          <HeartIcon />
           Favorites
         </Link>
         <Link
@@ -98,6 +101,7 @@ const Menu: React.FC = () => {
           `}
           href={"/profile"}
         >
+          <ProfileIcon />
           Profile
         </Link>
       </div>

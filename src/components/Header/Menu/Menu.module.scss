@@ -10,16 +10,18 @@
     gap: 2px;
     .itemMenu {
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       white-space: nowrap;
-      gap: 6px;
+      gap: 0px;
       height: 100%;
       width: 100%;
       padding: 6px 12px;
       box-sizing: border-box;
       border-radius: 8px;
       transition: 0.2s;
+      color: var(--main-color);
       &:hover {
         // text-decoration: underline;
         background-color: rgba(255, 255, 255, 0.2) !important;
@@ -38,6 +40,32 @@
       &.current {
         // text-decoration: underline;
         color: var(--main-color);
+        svg {
+          fill: var(--main-color);
+        }
+      }
+      svg {
+        width: 24px;
+        min-width: 24px;
+        height: 24px;
+        min-height: 24px;
+        fill: var(--light-color);
+      }
+      &.addANoodle {
+        background-color: var(--main-color);
+        height: 70px;
+        transform: translateY(-10px);
+        color: white;
+        svg {
+          width: 32px;
+          min-width: 32px;
+          height: 32px;
+          min-height: 32px;
+          fill: white;
+        }
+        &:hover {
+          background-color: #ffa94e !important;
+        }
       }
     }
     .networks {
